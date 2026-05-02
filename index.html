@@ -8,6 +8,7 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
+<body>
   <!--
     SOSTITUZIONI RAPIDE:
     1. SPOTIFY_PROFILE_URL:
@@ -29,10 +30,10 @@
       <a class="brand" href="#top" aria-label="Vai alla homepage">ZEROUAN <span>INC.</span></a>
 
       <nav class="nav-links" aria-label="Navigazione principale">
-        <!--<a href="#web-radio">Web Radio</a>
-        <a href="#podcast">Podcast</a>
-        <a href="#community">Community</a>
-        <a href="#merch">Merch <span class="soon">Soon</span></a>-->
+        <a href="#musica">Musica</a>
+        <a href="#connessioni">Connessioni</a>
+        <a href="#sections">Progetti</a>
+        <a href="#galleria">Gallery</a>
       </nav>
 
       <div class="header-actions" aria-label="Link principali">
@@ -120,73 +121,229 @@
             </div>
           </div>
 
-          <aside class="spotify-card" aria-label="Anteprima profilo Spotify Zerouan">
-            <div class="profile-top">
-              <div class="avatar" aria-hidden="true">Z</div>
-
+          <aside class="spotify-card spotify-live-card" aria-label="Anteprima Spotify aggiornata di Zerouan">
+            <div class="spotify-live-header">
               <div>
-                <p class="verified">✓ Artista / creator</p>
+                <p class="verified">✓ Artista Spotify</p>
                 <p class="profile-name">Zerouan</p>
-                <p class="profile-role">Musica e contenuti creativi.<br />Una stanza digitale per chi ascolta, pensa e partecipa.</p>
+                <p class="profile-role">Musica e contenuti creativi. Una stanza digitale per chi ascolta, pensa e partecipa.</p>
               </div>
             </div>
 
-            <div class="player-row">
-              <a class="play-button" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer" aria-label="Apri Spotify">▶</a>
+            <iframe
+              class="spotify-artist-embed"
+              src="https://open.spotify.com/embed/artist/69viLass4Hx655goSGnoE2?utm_source=generator&theme=0"
+              width="100%"
+              height="380"
+              frameborder="0"
+              allowfullscreen=""
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title="Player Spotify ufficiale — Zerouan">
+            </iframe>
 
-              <div class="box-action-row">
-                <a class="follow-button" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer" aria-label="Apri il profilo Spotify di Zerouan per seguirlo">
-                  Follow su Spotify
-                </a>
-
-                <div class="social-icons" aria-label="Social network Zerouan">
-                  <a class="social-button" href="https://www.instagram.com/doc.zerouan" target="_blank" rel="noopener noreferrer" aria-label="Apri Instagram di Zerouan">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M7.75 2h8.5A5.76 5.76 0 0 1 22 7.75v8.5A5.76 5.76 0 0 1 16.25 22h-8.5A5.76 5.76 0 0 1 2 16.25v-8.5A5.76 5.76 0 0 1 7.75 2Zm0 2A3.75 3.75 0 0 0 4 7.75v8.5A3.75 3.75 0 0 0 7.75 20h8.5A3.75 3.75 0 0 0 20 16.25v-8.5A3.75 3.75 0 0 0 16.25 4h-8.5Zm8.75 2.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/>
-                    </svg>
-                  </a>
-
-                  <a class="social-button" href="https://www.youtube.com/@doc.zerouan" target="_blank" rel="noopener noreferrer" aria-label="Apri YouTube di Zerouan">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M23.5 6.2a3.02 3.02 0 0 0-2.13-2.14C19.49 3.56 12 3.56 12 3.56s-7.49 0-9.37.5A3.02 3.02 0 0 0 .5 6.2 31.46 31.46 0 0 0 0 12a31.46 31.46 0 0 0 .5 5.8 3.02 3.02 0 0 0 2.13 2.14c1.88.5 9.37.5 9.37.5s7.49 0 9.37-.5a3.02 3.02 0 0 0 2.13-2.14A31.46 31.46 0 0 0 24 12a31.46 31.46 0 0 0-.5-5.8ZM9.6 15.57V8.43L15.82 12 9.6 15.57Z"/>
-                    </svg>
-                  </a>
-
-                  <a class="social-button" href="https://www.tiktok.com/@doc.zerouan" target="_blank" rel="noopener noreferrer" aria-label="Apri TikTok di Zerouan">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M18.2 5.6a5.55 5.55 0 0 1-3.38-1.16A5.74 5.74 0 0 1 12.72 1h-3.4v14.26a2.98 2.98 0 1 1-2.1-2.85V8.96a6.38 6.38 0 1 0 5.5 6.3V8.08a9.12 9.12 0 0 0 5.48 1.82V5.6Z"/>
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <div class="popular">
-              <h2>In evidenza</h2>
-
-              <div class="track">
-                <span class="track-number">1</span>
-                <span class="track-cover">Z</span>
-                <span class="track-title">Sancho Panza</span>
-                <span class="track-time">Spotify</span>
-              </div>
-
-              <div class="track">
-                <span class="track-number">2</span>
-                <span class="track-cover">Z</span>
-                <span class="track-title">J.J. Heug</span>
-                <span class="track-time">Spotify</span>
-              </div>
+            <div class="spotify-live-actions">
+              <a class="follow-button" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer" aria-label="Apri il profilo Spotify di Zerouan per seguirlo">
+                Apri / Follow su Spotify
+              </a>
             </div>
 
             <a class="spotify-footer" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
-              <span>Visualizza su Spotify</span>
+              <span>Profilo sincronizzato via Spotify Embed</span>
               <span class="spotify-logo">●</span>
             </a>
           </aside>
         </div>
 
-        <!--<p class="scroll-hint">Scrolla per scoprire di più ↓</p>-->
+        <p class="scroll-hint">Scrolla per scoprire di più ↓ 
+          E se non avessi capito: <a class="hero-cta" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+                  ▶ Ascoltami su Spotify
+                </a></p>
+      </div>
+    </section>
+
+
+    <section class="music-showcase" id="musica" aria-labelledby="music-title">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Ultime uscite</p>
+          <h2 id="music-title">Musica</h2>
+          <p>Una selezione corta e leggibile: pochi punti d’ingresso, niente dispersione.</p>
+        </div>
+
+        <div class="music-showcase-grid">
+          <article class="feature-release-card" aria-label="Ultimo brano in evidenza">
+            <div class="release-copy">
+              <span class="release-kicker">Brano in evidenza</span>
+              <h3>Sancho Panza</h3>
+              <p>Rap conscious, jazz, hip hop e pop in una direzione intima, rilassata e introspettiva.</p>
+            </div>
+
+            <iframe
+              class="spotify-embed"
+              src="https://open.spotify.com/embed/track/2PH4NezxXWFSlYpkEN3tWE?utm_source=generator"
+              width="100%"
+              height="152"
+              frameborder="0"
+              allowfullscreen=""
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title="Player Spotify — Sancho Panza">
+            </iframe>
+
+            <div class="release-actions">
+              <a class="hero-cta compact" href="https://open.spotify.com/track/2PH4NezxXWFSlYpkEN3tWE" target="_blank" rel="noopener noreferrer">
+                ▶ Ascolta il brano
+              </a>
+
+              <a class="ghost-button" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+                Profilo Spotify
+              </a>
+            </div>
+          </article>
+
+          <aside class="release-list-card" aria-label="Altri contenuti musicali">
+            <h3>Da ascoltare</h3>
+
+            <a class="mini-track" href="https://open.spotify.com/track/2PH4NezxXWFSlYpkEN3tWE" target="_blank" rel="noopener noreferrer">
+              <span class="track-cover">Z</span>
+              <span>
+                <strong>Sancho Panza</strong>
+                <small>Ultima uscita · Spotify</small>
+              </span>
+            </a>
+
+            <a class="mini-track" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+              <span class="track-cover">Z</span>
+              <span>
+                <strong>J.J. Heug</strong>
+                <small>Profilo artista · Spotify</small>
+              </span>
+            </a>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="connection-section" id="connessioni" aria-labelledby="connection-title">
+      <div class="container connection-inner">
+        <div class="section-heading align-left">
+          <p class="eyebrow">Social proof</p>
+          <h2 id="connection-title">Connessioni</h2>
+          <p>Link immediati alle piattaforme dove seguire musica, video, performance e aggiornamenti del progetto.</p>
+        </div>
+
+        <div class="connection-grid" aria-label="Collegamenti social Zerouan">
+          <a class="connection-card spotify" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+            <span class="connection-icon">●</span>
+            <strong>Spotify</strong>
+            <small>Musica e follow artista</small>
+          </a>
+
+          <a class="connection-card" href="https://www.youtube.com/@doc.zerouan" target="_blank" rel="noopener noreferrer">
+            <span class="connection-icon">▶</span>
+            <strong>YouTube</strong>
+            <small>Video e contenuti lunghi</small>
+          </a>
+
+          <a class="connection-card" href="https://www.instagram.com/doc.zerouan" target="_blank" rel="noopener noreferrer">
+            <span class="connection-icon">◎</span>
+            <strong>Instagram</strong>
+            <small>Performance e aggiornamenti</small>
+          </a>
+
+          <a class="connection-card" href="https://www.tiktok.com/@doc.zerouan" target="_blank" rel="noopener noreferrer">
+            <span class="connection-icon">♪</span>
+            <strong>TikTok</strong>
+            <small>Clip e momenti rapidi</small>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="sections project-section" id="sections" aria-labelledby="project-title">
+      <div class="container">
+        <div class="section-heading project-heading">
+          <p class="eyebrow">Ecosistema Zerouan</p>
+          <h2 id="project-title">Progetti</h2>
+          <p>Le aree future di ZEROUAN INC.: contenuti, community, musica e identità visiva.</p>
+        </div>
+
+        <div class="project-layout">
+          <article class="project-main-card" id="web-radio">
+            <div class="project-icon">📡</div>
+            <div>
+              <span class="release-kicker">Progetto principale</span>
+              <h3>Web Radio</h3>
+              <p>Una selezione musicale e creativa sempre accessibile: uno spazio sonoro da far crescere insieme al progetto.</p>
+            </div>
+            <a class="ghost-button" href="#top">In preparazione</a>
+          </article>
+
+          <div class="project-side-grid">
+            <article class="project-card" id="podcast">
+              <div class="project-icon small">🎙️</div>
+              <h3>Podcast <span class="soon">Project</span></h3>
+              <p>Conversazioni, storie, riflessioni e contenuti legati al progetto Zerouan.</p>
+            </article>
+
+            <article class="project-card" id="community">
+              <div class="project-icon small">👥</div>
+              <h3>Community <span class="soon">Soon</span></h3>
+              <p>Uno spazio futuro per commentare, discutere e creare connessioni intorno ai contenuti.</p>
+            </article>
+
+            <article class="project-card" id="merch">
+              <div class="project-icon small">👕</div>
+              <h3>Merch <span class="soon">Future</span></h3>
+              <p>Design, identità e oggetti legati all’immaginario di ZEROUAN INC.</p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="gallery-section" id="galleria" aria-labelledby="gallery-title">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Archivio visivo</p>
+          <h2 id="gallery-title">Galleria</h2>
+          <p>Uno spazio per foto, backstage, artwork, momenti live e frammenti visivi del mondo Zerouan.</p>
+        </div>
+
+        <div class="gallery-grid" aria-label="Galleria fotografica Zerouan">
+          <figure class="gallery-item featured">
+            <div class="gallery-placeholder">Z</div>
+            <figcaption>
+              <strong>Immagine in evidenza</strong>
+              <small>Sostituisci il placeholder con una tua foto principale.</small>
+            </figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <div class="gallery-placeholder">01</div>
+            <figcaption>
+              <strong>Backstage</strong>
+              <small>Studio, prove, registrazioni.</small>
+            </figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <div class="gallery-placeholder">02</div>
+            <figcaption>
+              <strong>Artwork</strong>
+              <small>Copertine, grafiche, visual.</small>
+            </figcaption>
+          </figure>
+
+          <figure class="gallery-item">
+            <div class="gallery-placeholder">03</div>
+            <figcaption>
+              <strong>Momenti</strong>
+              <small>Foto libere del progetto.</small>
+            </figcaption>
+          </figure>
+        </div>
       </div>
     </section>
 
@@ -225,6 +382,6 @@
       <span>Musica · Creatività · Community · Progetti</span>
     </div>
   </footer>
+  <script src="script.js"></script>
 </body>
-<script src="script.js"></script>
 </html>
