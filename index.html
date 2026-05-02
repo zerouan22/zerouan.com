@@ -312,13 +312,29 @@
         </div>
 
         <div class="gallery-grid" aria-label="Galleria fotografica Zerouan">
-          <figure class="gallery-item featured">
-            <div class="gallery-placeholder">Z</div>
-            <figcaption>
-              <strong>Immagine in evidenza</strong>
-              <small>Sostituisci il placeholder con una tua foto principale.</small>
-            </figcaption>
-          </figure>
+          <article class="gallery-item featured featured-gallery-card" aria-label="Immagini in evidenza">
+            <div class="featured-gallery-header">
+              <div>
+                <strong>Immagini in evidenza</strong>
+                <small>Scorri lateralmente e clicca una foto per ingrandirla.</small>
+              </div>
+              <span class="gallery-scroll-hint" aria-hidden="true">↔</span>
+            </div>
+
+            <div class="featured-gallery-scroll" aria-label="Carosello immagini in evidenza">
+              <button class="featured-photo gallery-lightbox-trigger" type="button" data-full="assets/gallery/evidenza-01.jpg" aria-label="Apri immagine in evidenza 1">
+                <img src="assets/gallery/cavalco.jpg" alt="Immagine in evidenza Zerouan 1" loading="lazy">
+              </button>
+
+              <button class="featured-photo gallery-lightbox-trigger" type="button" data-full="assets/gallery/evidenza-02.jpg" aria-label="Apri immagine in evidenza 2">
+                <img src="assets/gallery/mulino.jpg" alt="Immagine in evidenza Zerouan 2" loading="lazy">
+              </button>
+
+              <button class="featured-photo gallery-lightbox-trigger" type="button" data-full="assets/gallery/evidenza-03.jpg" aria-label="Apri immagine in evidenza 3">
+                <img src="assets/gallery/prospetto.jpg" alt="Immagine in evidenza Zerouan 3" loading="lazy">
+              </button>
+            </div>
+          </article>
 
           <figure class="gallery-item">
             <div class="gallery-placeholder">01</div>
