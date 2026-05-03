@@ -9,10 +9,13 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="segnale01.css">
 </head>
+
 <body>
   <header>
     <div class="container navbar">
-      <a class="brand" href="index.html#top" aria-label="Torna alla homepage">ZEROUAN <span>INC.</span></a>
+      <a class="brand" href="index.html#top" aria-label="Torna alla homepage">
+        ZEROUAN <span>INC.</span>
+      </a>
 
       <nav class="nav-links" aria-label="Navigazione principale">
         <a href="index.html#musica">Musica</a>
@@ -34,13 +37,17 @@
       <div class="container signal-hero-grid">
         <div class="signal-hero-copy">
           <p class="eyebrow">Sound Cards · Mappa musicale · Community</p>
+
           <h1>Segnale <span class="accent">01</span></h1>
+
           <p class="tagline">Figurine musicali per scoprire, collegare, condividere.</p>
+
           <p class="intro">
             Segnale 01 raccoglie Sound Cards create liberamente dagli utenti: piccole carte musicali
             dedicate a brani, singoli o album. Ogni card entra in una mappa interattiva, collegata alle altre
-            tramite affinità di genere, atmosfera e linguaggio sonoro.
+            tramite affinità di genere, atmosfera, popolarità, artista e scena musicale.
           </p>
+
           <div class="meta-row" aria-label="Logica dei collegamenti">
             <span>✦ Forte: genere primario condiviso</span>
             <span>◇ Medio: genere secondario affine</span>
@@ -50,11 +57,14 @@
 
         <aside class="signal-oracle-card" aria-label="Descrizione del progetto Segnale 01">
           <span class="release-kicker">Archivio vivo</span>
+
           <h2>Una costellazione di ascolti</h2>
+
           <p>
             Le card non sono semplici post: sono micro-identità visive del brano. La mappa funziona come
-            una rete: più due brani condividono elementi musicali, più il collegamento diventa luminoso.
+            una rete viva: più due brani condividono elementi musicali, più il collegamento pulsa e diventa luminoso.
           </p>
+
           <div class="signal-legend-mini">
             <span><i class="legend-line strong"></i> Forte</span>
             <span><i class="legend-line medium"></i> Medio</span>
@@ -68,9 +78,12 @@
       <div class="container">
         <div class="section-heading">
           <p class="eyebrow">Crea · Collega · Esplora</p>
+
           <h2 id="workspace-title">Mappa Sound Cards</h2>
+
           <p>
-            Compila il box a destra per generare una nuova card. Clicca una card nella mappa per leggerla.
+            Compila il box a destra per generare una nuova card. Puoi cercare il brano o l’artista su Spotify
+            per autocompilare cover, artista, link e metadati. Clicca una card nella mappa per leggerla.
           </p>
         </div>
 
@@ -81,28 +94,62 @@
                 <span class="release-kicker">Mappa interattiva</span>
                 <h3>Costellazione Segnale 01</h3>
               </div>
+
               <div class="map-actions">
-                <button class="ghost-button map-btn" id="resetViewBtn" type="button">Centra</button>
-                <button class="ghost-button map-btn danger" id="clearLocalBtn" type="button">Reset locale</button>
+                <button class="ghost-button map-btn" id="centerMapBtn" type="button">
+                  Centra mappa
+                </button>
+
+                <button class="ghost-button map-btn" id="resetViewBtn" type="button">
+                  Riorganizza
+                </button>
+
+                <button class="ghost-button map-btn" id="clearLocalBtn" type="button">
+                  Ricarica mappa
+                </button>
+
+                <button class="ghost-button map-btn danger" id="deleteSelectedBtn" type="button">
+                  Cancella selezionate
+                </button>
               </div>
             </div>
 
-            <div class="map-toolbar" aria-label="Filtri mappa">
+            <div class="map-toolbar" aria-label="Filtri e modalità mappa">
+              <label>
+                Tipo di mappa
+                <select id="mapMode" aria-label="Tipo di mappa">
+                  <option value="constellation">Costellazione Segnale 01</option>
+                  <option value="popularity">Mappa popolarità</option>
+                  <option value="artist">Mappa artisti</option>
+                  <option value="place">Mappa luogo/scena</option>
+                </select>
+              </label>
+
               <label>
                 Filtra genere
                 <select id="genreFilter">
-                  <option value="all">Tutti</option>
+                  <option value="all">Tutti i generi</option>
                 </select>
               </label>
+
               <label>
                 Cerca
-                <input id="searchCards" type="search" placeholder="Brano, artista, autore..." />
+                <input id="searchCards" type="search" placeholder="Brano, artista, autore, luogo..." />
               </label>
+
+              <p class="map-help">
+                Usa rotella/trackpad per zoomare. Trascina lo sfondo per muoverti.
+                CTRL+click o SHIFT+click su una card per selezionarla prima della cancellazione.
+              </p>
             </div>
 
             <div class="sound-map" id="soundMap" aria-live="polite">
-              <svg class="sound-links" id="soundLinks" aria-hidden="true"></svg>
-              <div class="sound-nodes" id="soundNodes"></div>
+              <div class="constellation-bg" aria-hidden="true"></div>
+
+              <div class="graph-viewport" id="graphViewport">
+                <svg class="sound-links" id="soundLinks" aria-hidden="true"></svg>
+                <div class="sound-nodes" id="soundNodes"></div>
+              </div>
             </div>
           </section>
 
@@ -117,71 +164,173 @@
             <form id="soundCardForm" class="sound-card-form">
               <label>
                 Titolo brano / album *
-                <input name="trackTitle" required maxlength="80" placeholder="Es. Sancho Panza" />
+                <input
+                  id="trackTitle"
+                  name="trackTitle"
+                  required
+                  maxlength="80"
+                  placeholder="Es. Sancho Panza"
+                />
               </label>
 
               <label>
                 Nome artista *
-                <input name="artistName" required maxlength="80" placeholder="Es. Zerouan" />
+                <input
+                  id="artistName"
+                  name="artistName"
+                  required
+                  maxlength="80"
+                  placeholder="Es. Zerouan"
+                />
+              </label>
+
+              <label>
+                Cerca automaticamente da Spotify
+                <div class="spotify-lookup-row">
+                  <button class="ghost-button" type="button" id="spotifyLookupBtn">
+                    Cerca su Spotify
+                  </button>
+
+                  <span id="spotifyLookupStatus" class="lookup-status">
+                    Inserisci brano/artista e cerca.
+                  </span>
+                </div>
               </label>
 
               <div class="form-grid-two">
                 <label>
                   Link artista
-                  <input name="artistUrl" type="url" placeholder="Spotify o Instagram" />
+                  <input
+                    id="artistUrl"
+                    name="artistUrl"
+                    type="url"
+                    placeholder="Autocompilato da Spotify o link Instagram"
+                  />
                 </label>
+
                 <label>
                   Foto artista
-                  <input name="artistPhoto" type="url" placeholder="URL immagine" />
+                  <input
+                    id="artistPhoto"
+                    name="artistPhoto"
+                    type="url"
+                    placeholder="Autocompilata da Spotify"
+                  />
                 </label>
               </div>
 
               <label>
                 Cover brano / album
-                <input name="coverUrl" type="url" placeholder="URL immagine copertina" />
+                <input
+                  id="coverUrl"
+                  name="coverUrl"
+                  type="url"
+                  placeholder="Autocompilata da Spotify"
+                />
               </label>
 
               <div class="form-grid-two">
                 <label>
                   Genere primario *
-                  <input name="primaryGenre" required maxlength="40" placeholder="Rap, Jazz, Indie..." />
+                  <input
+                    id="primaryGenre"
+                    name="primaryGenre"
+                    required
+                    maxlength="40"
+                    placeholder="Rap, Jazz, Indie..."
+                  />
                 </label>
+
                 <label>
                   Generi secondari
-                  <input name="secondaryGenres" maxlength="120" placeholder="Hip Hop, Soul, Pop" />
+                  <input
+                    id="secondaryGenres"
+                    name="secondaryGenres"
+                    maxlength="160"
+                    placeholder="Hip Hop, Soul, Pop"
+                  />
                 </label>
               </div>
 
               <label>
                 Mood / tag
-                <input name="moods" maxlength="120" placeholder="Chill, rituale, introspettivo" />
+                <input
+                  id="moods"
+                  name="moods"
+                  maxlength="120"
+                  placeholder="Chill, rituale, introspettivo"
+                />
+              </label>
+
+              <label>
+                Luogo / scena musicale
+                <input
+                  id="originLocation"
+                  name="originLocation"
+                  maxlength="120"
+                  placeholder="Es. Teramo, Napoli, UK, Detroit..."
+                />
+              </label>
+
+              <label>
+                Nota mappa
+                <input
+                  id="mapNote"
+                  name="mapNote"
+                  maxlength="160"
+                  placeholder="Es. jazz rap, underground, cantautorato..."
+                />
               </label>
 
               <label>
                 Descrizione *
-                <textarea name="description" required maxlength="280" rows="4" placeholder="Descrivi il brano in poche righe."></textarea>
+                <textarea
+                  id="description"
+                  name="description"
+                  required
+                  maxlength="280"
+                  rows="4"
+                  placeholder="Descrivi il brano in poche righe."
+                ></textarea>
               </label>
 
               <label>
                 Commento personale opzionale
-                <textarea name="personalComment" maxlength="220" rows="3" placeholder="Perché lo consigli?"></textarea>
+                <textarea
+                  id="personalComment"
+                  name="personalComment"
+                  maxlength="220"
+                  rows="3"
+                  placeholder="Perché lo consigli?"
+                ></textarea>
               </label>
 
               <div class="form-grid-two">
                 <label>
                   Autore card *
-                  <input name="cardAuthor" required maxlength="60" placeholder="Il tuo nome/nickname" />
+                  <input
+                    id="cardAuthor"
+                    name="cardAuthor"
+                    required
+                    maxlength="60"
+                    placeholder="Il tuo nome/nickname"
+                  />
                 </label>
+
                 <label>
                   Contatto autore
-                  <input name="authorContact" maxlength="120" placeholder="Instagram o Email" />
+                  <input
+                    id="authorContact"
+                    name="authorContact"
+                    maxlength="120"
+                    placeholder="@instagram oppure email"
+                  />
                 </label>
               </div>
 
-              <button class="hero-cta form-submit" type="submit">✦ Crea Sound Card</button>
-              <p class="form-note">
-                Demo statica: i dati vengono salvati nel browser con localStorage. Per renderli condivisi tra tutti serve un database.
-              </p>
+              <button class="hero-cta form-submit" type="submit">
+                ✦ Crea Sound Card
+              </button>
             </form>
           </aside>
         </div>
@@ -191,7 +340,10 @@
 
   <div class="card-modal" id="cardModal" aria-hidden="true" role="dialog" aria-label="Dettaglio Sound Card">
     <div class="card-modal-inner">
-      <button class="lightbox-close" id="closeModalBtn" type="button" aria-label="Chiudi card">×</button>
+      <button class="lightbox-close" id="closeModalBtn" type="button" aria-label="Chiudi card">
+        ×
+      </button>
+
       <div id="modalContent"></div>
     </div>
   </div>
@@ -202,9 +354,9 @@
       <span>Segnale 01 · Sound Cards · Mappa musicale</span>
     </div>
   </footer>
-  
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="segnale01.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="segnale01.js"></script>
 </body>
 </html>

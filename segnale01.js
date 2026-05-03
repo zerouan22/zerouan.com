@@ -1,35 +1,135 @@
-// ===============================
-// SEGNALE 01 — SUPABASE + D3 GRAPH
-// ===============================
+// ======================================
+// SEGNALE 01 — SUPABASE + SPOTIFY + D3
+// ======================================
 
 const SUPABASE_URL = "https://ewmbfgosevasgnbzyodd.supabase.co";
 const SUPABASE_KEY = "sb_publishable_gwREOykgdAH-CzlOT5kzmw_0wvI6jtf";
+
+const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
+
+const WORLD_WIDTH = 2600;
+const WORLD_HEIGHT = 1700;
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let cards = [];
 let simulation = null;
+let zoomBehavior = null;
+let currentTransform = d3.zoomIdentity;
+let selectedCardIds = new Set();
 
 const form = document.getElementById("soundCardForm");
 const map = document.getElementById("soundMap");
+const graphViewport = document.getElementById("graphViewport");
 const nodesLayer = document.getElementById("soundNodes");
 const linksSvg = document.getElementById("soundLinks");
+
 const genreFilter = document.getElementById("genreFilter");
 const searchCards = document.getElementById("searchCards");
 const resetViewBtn = document.getElementById("resetViewBtn");
 const reloadBtn = document.getElementById("clearLocalBtn");
+const centerMapBtn = document.getElementById("centerMapBtn");
+const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+const mapModeSelect = document.getElementById("mapMode");
+
+const spotifyLookupBtn = document.getElementById("spotifyLookupBtn");
+const spotifyLookupStatus = document.getElementById("spotifyLookupStatus");
+
 const modal = document.getElementById("cardModal");
 const modalContent = document.getElementById("modalContent");
 const closeModalBtn = document.getElementById("closeModalBtn");
 
+let spotifyCache = null;
+
 init();
 
 async function init() {
-  setStatus("Connessione alla mappa condivisa...");
+  setStatus("Connessione alla Costellazione Segnale 01...");
+  prepareMapDom();
+  bindEvents();
+  setupZoom();
   await loadCards();
   subscribeRealtime();
-  bindEvents();
   render();
+  centerMap();
+}
+
+function prepareMapDom() {
+  if (!map || !graphViewport || !nodesLayer || !linksSvg) return;
+
+  graphViewport.style.width = `${WORLD_WIDTH}px`;
+  graphViewport.style.height = `${WORLD_HEIGHT}px`;
+
+  linksSvg.setAttribute("width", WORLD_WIDTH);
+  linksSvg.setAttribute("height", WORLD_HEIGHT);
+  linksSvg.setAttribute("viewBox", `0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`);
+}
+
+function bindEvents() {
+  form?.addEventListener("submit", handleSubmit);
+
+  genreFilter?.addEventListener("change", render);
+  searchCards?.addEventListener("input", render);
+  mapModeSelect?.addEventListener("change", render);
+
+  resetViewBtn?.addEventListener("click", resetGraphLayout);
+
+  if (reloadBtn) {
+    reloadBtn.textContent = "Ricarica mappa";
+    reloadBtn.addEventListener("click", async () => {
+      await loadCards();
+      render();
+    });
+  }
+
+  centerMapBtn?.addEventListener("click", centerMap);
+  deleteSelectedBtn?.addEventListener("click", deleteSelectedCards);
+  spotifyLookupBtn?.addEventListener("click", lookupSpotify);
+
+  closeModalBtn?.addEventListener("click", closeModal);
+
+  modal?.addEventListener("click", event => {
+    if (event.target === modal) closeModal();
+  });
+
+  window.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeModal();
+  });
+
+  window.addEventListener("resize", () => {
+    render();
+  });
+}
+
+function setupZoom() {
+  if (!map || !graphViewport) return;
+
+  zoomBehavior = d3.zoom()
+    .scaleExtent([0.18, 2.2])
+    .on("zoom", event => {
+      currentTransform = event.transform;
+      graphViewport.style.transform = `translate(${currentTransform.x}px, ${currentTransform.y}px) scale(${currentTransform.k})`;
+    });
+
+  d3.select(map).call(zoomBehavior);
+}
+
+function centerMap() {
+  if (!map || !zoomBehavior) return;
+
+  const rect = map.getBoundingClientRect();
+  const scale = 0.42;
+
+  const x = rect.width / 2 - (WORLD_WIDTH * scale) / 2;
+  const y = rect.height / 2 - (WORLD_HEIGHT * scale) / 2;
+
+  d3.select(map)
+    .transition()
+    .duration(650)
+    .call(
+      zoomBehavior.transform,
+      d3.zoomIdentity.translate(x, y).scale(scale)
+    );
 }
 
 async function loadCards() {
@@ -44,10 +144,15 @@ async function loadCards() {
     return;
   }
 
-  cards = data.map(row => ({
+  cards = data.map(normalizeDbCard);
+  setStatus(`Mappa caricata: ${cards.length} Sound Cards.`);
+}
+
+function normalizeDbCard(row) {
+  return {
     id: row.id,
-    trackTitle: row.track_title,
-    artistName: row.artist_name,
+    trackTitle: row.track_title || "",
+    artistName: row.artist_name || "",
     artistUrl: row.artist_url || "",
     artistPhoto: row.artist_photo || "",
     coverUrl: row.cover_url || "",
@@ -58,12 +163,20 @@ async function loadCards() {
     personalComment: row.personal_comment || "",
     cardAuthor: row.card_author || "",
     authorContact: row.author_contact || "",
+    originLocation: row.origin_location || "",
+    mapNote: row.map_note || "",
+    spotifyTrackId: row.spotify_track_id || "",
+    spotifyArtistId: row.spotify_artist_id || "",
+    spotifyAlbumId: row.spotify_album_id || "",
+    spotifyUri: row.spotify_uri || "",
+    spotifyPreviewUrl: row.spotify_preview_url || "",
+    spotifyPopularity: Number(row.spotify_popularity) || 0,
+    spotifyArtistPopularity: Number(row.spotify_artist_popularity) || 0,
+    spotifyArtistGenres: row.spotify_artist_genres || "",
     createdAt: row.created_at ? row.created_at.slice(0, 10) : "",
     x: Number(row.x) || 50,
     y: Number(row.y) || 50
-  }));
-
-  setStatus(`Mappa caricata: ${cards.length} Sound Cards.`);
+  };
 }
 
 function subscribeRealtime() {
@@ -84,30 +197,59 @@ function subscribeRealtime() {
     .subscribe();
 }
 
-function bindEvents() {
-  form.addEventListener("submit", handleSubmit);
-  genreFilter.addEventListener("change", render);
-  searchCards.addEventListener("input", render);
+async function lookupSpotify() {
+  const trackTitle = getInputValue("trackTitle");
+  const artistName = getInputValue("artistName");
 
-  resetViewBtn.addEventListener("click", resetGraphLayout);
+  if (!trackTitle && !artistName) {
+    setLookupStatus("Inserisci almeno titolo brano o artista.", true);
+    return;
+  }
 
-  reloadBtn.textContent = "Ricarica mappa";
-  reloadBtn.addEventListener("click", async () => {
-    await loadCards();
-    render();
-  });
+  setLookupStatus("Ricerca Spotify in corso...", false);
 
-  closeModalBtn.addEventListener("click", closeModal);
+  try {
+    const res = await fetch(`${FUNCTIONS_BASE}/spotify-lookup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify({ trackTitle, artistName })
+    });
 
-  modal.addEventListener("click", event => {
-    if (event.target === modal) closeModal();
-  });
+    const payload = await res.json();
 
-  window.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeModal();
-  });
+    if (!res.ok || payload.error) {
+      throw new Error(payload.error || "Errore ricerca Spotify.");
+    }
 
-  window.addEventListener("resize", render);
+    spotifyCache = payload.result;
+    applySpotifyResult(payload.result);
+
+    setLookupStatus(`Trovato: ${payload.result.trackTitle} — ${payload.result.artistName}`, false);
+  } catch (error) {
+    console.error(error);
+    setLookupStatus(`Errore Spotify: ${error.message}`, true);
+  }
+}
+
+function applySpotifyResult(result) {
+  setInputValue("trackTitle", result.trackTitle);
+  setInputValue("artistName", result.artistName);
+  setInputValue("artistUrl", result.artistUrl);
+  setInputValue("artistPhoto", result.artistPhoto);
+  setInputValue("coverUrl", result.coverUrl);
+
+  if (!getInputValue("primaryGenre")) {
+    const firstGenre = splitTerms(result.spotifyArtistGenres)[0] || "";
+    setInputValue("primaryGenre", firstGenre);
+  }
+
+  if (!getInputValue("secondaryGenres")) {
+    setInputValue("secondaryGenres", result.spotifyArtistGenres || "");
+  }
 }
 
 async function handleSubmit(event) {
@@ -116,10 +258,9 @@ async function handleSubmit(event) {
   const data = new FormData(form);
   const raw = Object.fromEntries(data.entries());
 
-  const angle = cards.length * 0.9;
-  const radius = 22 + Math.min(cards.length * 2, 32);
+  const position = initialPositionForNewCard(cards.length);
 
-  const newCard = {
+  const row = {
     track_title: clean(raw.trackTitle),
     artist_name: clean(raw.artistName),
     artist_url: clean(raw.artistUrl),
@@ -132,13 +273,25 @@ async function handleSubmit(event) {
     personal_comment: clean(raw.personalComment),
     card_author: clean(raw.cardAuthor),
     author_contact: clean(raw.authorContact),
-    x: 50 + Math.cos(angle) * radius,
-    y: 50 + Math.sin(angle) * radius
+    origin_location: clean(raw.originLocation),
+    map_note: clean(raw.mapNote),
+
+    spotify_track_id: spotifyCache?.spotifyTrackId || "",
+    spotify_artist_id: spotifyCache?.spotifyArtistId || "",
+    spotify_album_id: spotifyCache?.spotifyAlbumId || "",
+    spotify_uri: spotifyCache?.spotifyUri || "",
+    spotify_preview_url: spotifyCache?.spotifyPreviewUrl || "",
+    spotify_popularity: spotifyCache?.spotifyPopularity ?? null,
+    spotify_artist_popularity: spotifyCache?.spotifyArtistPopularity ?? null,
+    spotify_artist_genres: spotifyCache?.spotifyArtistGenres || "",
+
+    x: position.x,
+    y: position.y
   };
 
   const { error } = await supabaseClient
     .from("sound_cards")
-    .insert(newCard);
+    .insert(row);
 
   if (error) {
     console.error(error);
@@ -146,8 +299,20 @@ async function handleSubmit(event) {
     return;
   }
 
+  spotifyCache = null;
   form.reset();
+  setLookupStatus("Inserisci brano/artista e cerca.", false);
   setStatus("Sound Card depositata nella mappa condivisa.");
+}
+
+function initialPositionForNewCard(index) {
+  const angle = index * 0.72;
+  const radius = 260 + Math.min(index * 9, 420);
+
+  return {
+    x: WORLD_WIDTH / 2 + Math.cos(angle) * radius,
+    y: WORLD_HEIGHT / 2 + Math.sin(angle) * radius
+  };
 }
 
 function render() {
@@ -165,16 +330,12 @@ function render() {
 }
 
 function renderGraph(visibleCards, links) {
-  const rect = map.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
-
-  linksSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  const mode = mapModeSelect?.value || "constellation";
 
   const d3Nodes = visibleCards.map(card => ({
     ...card,
-    x: (card.x / 100) * width,
-    y: (card.y / 100) * height
+    x: Number(card.x) || WORLD_WIDTH / 2,
+    y: Number(card.y) || WORLD_HEIGHT / 2
   }));
 
   const d3Links = links.map(link => ({
@@ -186,26 +347,69 @@ function renderGraph(visibleCards, links) {
   if (simulation) simulation.stop();
 
   simulation = d3.forceSimulation(d3Nodes)
-    .force(
-      "link",
-      d3.forceLink(d3Links)
-        .id(d => d.id)
-        .distance(d => {
-          if (d.strength === "strong") return 165;
-          if (d.strength === "medium") return 230;
-          return 315;
-        })
-        .strength(d => {
-          if (d.strength === "strong") return 0.46;
-          if (d.strength === "medium") return 0.22;
-          return 0.08;
-        })
-    )
-    .force("charge", d3.forceManyBody().strength(-760))
-    .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collision", d3.forceCollide().radius(125))
+    .force("charge", d3.forceManyBody().strength(mode === "popularity" ? -620 : -860))
+    .force("collision", d3.forceCollide().radius(138))
     .alpha(0.95)
-    .alphaDecay(0.035);
+    .alphaDecay(0.018);
+
+  if (mode === "constellation") {
+    simulation
+      .force(
+        "link",
+        d3.forceLink(d3Links)
+          .id(d => d.id)
+          .distance(d => {
+            if (d.strength === "strong") return 185;
+            if (d.strength === "medium") return 270;
+            return 390;
+          })
+          .strength(d => {
+            if (d.strength === "strong") return 0.34;
+            if (d.strength === "medium") return 0.16;
+            return 0.055;
+          })
+      )
+      .force("center", d3.forceCenter(WORLD_WIDTH / 2, WORLD_HEIGHT / 2));
+  }
+
+  if (mode === "popularity") {
+    simulation
+      .force("x", d3.forceX(d => popularityX(d)).strength(0.21))
+      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.08))
+      .force(
+        "link",
+        d3.forceLink(d3Links)
+          .id(d => d.id)
+          .distance(260)
+          .strength(0.05)
+      );
+  }
+
+  if (mode === "artist") {
+    simulation
+      .force("x", d3.forceX(d => hashToRange(normalize(d.artistName), 360, WORLD_WIDTH - 360)).strength(0.18))
+      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.08))
+      .force(
+        "link",
+        d3.forceLink(d3Links)
+          .id(d => d.id)
+          .distance(230)
+          .strength(0.12)
+      );
+  }
+
+  if (mode === "place") {
+    simulation
+      .force("x", d3.forceX(d => hashToRange(normalize(d.originLocation || "unknown"), 360, WORLD_WIDTH - 360)).strength(0.18))
+      .force("y", d3.forceY(d => hashToRange(normalize(d.originLocation || "unknown-y"), 280, WORLD_HEIGHT - 280)).strength(0.16))
+      .force(
+        "link",
+        d3.forceLink(d3Links)
+          .id(d => d.id)
+          .distance(260)
+          .strength(0.07)
+      );
+  }
 
   const linkSelection = d3.select(linksSvg)
     .selectAll("line")
@@ -219,12 +423,20 @@ function renderGraph(visibleCards, links) {
     .data(d3Nodes)
     .enter()
     .append("article")
-    .attr("class", "sound-node")
+    .attr("class", d => selectedCardIds.has(d.id) ? "sound-node is-selected" : "sound-node")
     .attr("tabindex", "0")
     .attr("role", "button")
     .attr("aria-label", d => `Apri Sound Card ${d.trackTitle} di ${d.artistName}`)
     .html(d => nodeHtml(d))
-    .on("click", (_, d) => openCard(d.id))
+    .on("click", (event, d) => {
+      if (event.shiftKey || event.ctrlKey || event.metaKey) {
+        toggleSelected(d.id);
+        render();
+        return;
+      }
+
+      openCard(d.id);
+    })
     .on("keydown", (event, d) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -240,25 +452,25 @@ function renderGraph(visibleCards, links) {
 
   simulation.on("tick", () => {
     linkSelection
-      .attr("x1", d => clamp(d.source.x, 20, width - 20))
-      .attr("y1", d => clamp(d.source.y, 20, height - 20))
-      .attr("x2", d => clamp(d.target.x, 20, width - 20))
-      .attr("y2", d => clamp(d.target.y, 20, height - 20));
+      .attr("x1", d => clamp(d.source.x, 30, WORLD_WIDTH - 30))
+      .attr("y1", d => clamp(d.source.y, 30, WORLD_HEIGHT - 30))
+      .attr("x2", d => clamp(d.target.x, 30, WORLD_WIDTH - 30))
+      .attr("y2", d => clamp(d.target.y, 30, WORLD_HEIGHT - 30));
 
     nodeSelection
-      .style("left", d => `${clamp(d.x, 100, width - 100)}px`)
-      .style("top", d => `${clamp(d.y, 130, height - 130)}px`);
+      .style("left", d => `${clamp(d.x, 120, WORLD_WIDTH - 120)}px`)
+      .style("top", d => `${clamp(d.y, 150, WORLD_HEIGHT - 150)}px`);
   });
 
   function dragStarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.25).restart();
+    if (!event.active) simulation.alphaTarget(0.18).restart();
     d.fx = d.x;
     d.fy = d.y;
   }
 
   function dragged(event, d) {
-    d.fx = clamp(event.x, 90, width - 90);
-    d.fy = clamp(event.y, 120, height - 120);
+    d.fx = clamp(event.x, 110, WORLD_WIDTH - 110);
+    d.fy = clamp(event.y, 140, WORLD_HEIGHT - 140);
   }
 
   async function dragEnded(event, d) {
@@ -267,8 +479,8 @@ function renderGraph(visibleCards, links) {
     d.fx = null;
     d.fy = null;
 
-    const newX = clamp((d.x / width) * 100, 5, 95);
-    const newY = clamp((d.y / height) * 100, 8, 92);
+    const newX = clamp(d.x, 80, WORLD_WIDTH - 80);
+    const newY = clamp(d.y, 80, WORLD_HEIGHT - 80);
 
     const { error } = await supabaseClient
       .from("sound_cards")
@@ -299,8 +511,12 @@ function nodeHtml(card) {
       <span class="sound-node-artist">${escapeHtml(card.artistName)}</span>
 
       <div class="sound-node-tags">
-        <span>${escapeHtml(card.primaryGenre)}</span>
-        ${splitTerms(card.moods).slice(0, 2).map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}
+        <span>${escapeHtml(card.primaryGenre || "unknown")}</span>
+        ${
+          card.spotifyPopularity
+            ? `<span>pop ${escapeHtml(String(card.spotifyPopularity))}</span>`
+            : ""
+        }
       </div>
     </div>
   `;
@@ -330,8 +546,8 @@ function calculateLink(a, b) {
   const aPrimary = normalize(a.primaryGenre);
   const bPrimary = normalize(b.primaryGenre);
 
-  const aSecondary = splitTerms(a.secondaryGenres);
-  const bSecondary = splitTerms(b.secondaryGenres);
+  const aSecondary = splitTerms(`${a.secondaryGenres}, ${a.spotifyArtistGenres}`);
+  const bSecondary = splitTerms(`${b.secondaryGenres}, ${b.spotifyArtistGenres}`);
 
   const aMoods = splitTerms(a.moods);
   const bMoods = splitTerms(b.moods);
@@ -351,8 +567,8 @@ function calculateLink(a, b) {
 }
 
 function getVisibleCards() {
-  const selectedGenre = genreFilter.value || "all";
-  const query = normalize(searchCards.value);
+  const selectedGenre = genreFilter?.value || "all";
+  const query = normalize(searchCards?.value || "");
 
   return cards.filter(card => {
     const genreMatch =
@@ -364,8 +580,10 @@ function getVisibleCards() {
       card.artistName,
       card.primaryGenre,
       card.secondaryGenres,
+      card.spotifyArtistGenres,
       card.moods,
-      card.cardAuthor
+      card.cardAuthor,
+      card.originLocation
     ].join(" "));
 
     const searchMatch = !query || searchable.includes(query);
@@ -375,6 +593,8 @@ function getVisibleCards() {
 }
 
 function updateGenreFilter() {
+  if (!genreFilter) return;
+
   const current = genreFilter.value || "all";
 
   const genres = [...new Set(
@@ -397,13 +617,12 @@ function updateGenreFilter() {
 
 async function resetGraphLayout() {
   const updates = cards.map((card, index) => {
-    const angle = (index / Math.max(cards.length, 1)) * Math.PI * 2;
-    const radius = cards.length < 4 ? 22 : 34;
+    const pos = initialPositionForNewCard(index);
 
     return {
       id: card.id,
-      x: 50 + Math.cos(angle) * radius,
-      y: 50 + Math.sin(angle) * radius
+      x: pos.x,
+      y: pos.y
     };
   });
 
@@ -416,6 +635,55 @@ async function resetGraphLayout() {
 
   await loadCards();
   render();
+  centerMap();
+}
+
+function toggleSelected(id) {
+  if (selectedCardIds.has(id)) {
+    selectedCardIds.delete(id);
+  } else {
+    selectedCardIds.add(id);
+  }
+}
+
+async function deleteSelectedCards() {
+  if (selectedCardIds.size === 0) {
+    alert("Seleziona almeno una card con CTRL+click o SHIFT+click.");
+    return;
+  }
+
+  const password = prompt(`Password per cancellare ${selectedCardIds.size} card:`);
+
+  if (!password) return;
+
+  try {
+    const res = await fetch(`${FUNCTIONS_BASE}/delete-card`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`
+      },
+      body: JSON.stringify({
+        cardIds: [...selectedCardIds],
+        password
+      })
+    });
+
+    const payload = await res.json();
+
+    if (!res.ok || payload.error) {
+      throw new Error(payload.error || "Errore cancellazione.");
+    }
+
+    selectedCardIds.clear();
+    await loadCards();
+    render();
+    setStatus("Card cancellate correttamente.");
+  } catch (error) {
+    console.error(error);
+    alert(`Cancellazione fallita: ${error.message}`);
+  }
 }
 
 function openCard(id) {
@@ -470,10 +738,27 @@ function openCard(id) {
       <div class="detail-meta">
         <span>Genere: ${escapeHtml(card.primaryGenre)}</span>
         ${card.secondaryGenres ? `<span>Affinità: ${escapeHtml(card.secondaryGenres)}</span>` : ""}
+        ${card.spotifyArtistGenres ? `<span>Spotify genres: ${escapeHtml(card.spotifyArtistGenres)}</span>` : ""}
         ${card.moods ? `<span>Mood: ${escapeHtml(card.moods)}</span>` : ""}
+        ${card.spotifyPopularity ? `<span>Popolarità brano: ${escapeHtml(String(card.spotifyPopularity))}/100</span>` : ""}
+        ${card.spotifyArtistPopularity ? `<span>Popolarità artista: ${escapeHtml(String(card.spotifyArtistPopularity))}/100</span>` : ""}
+        ${card.originLocation ? `<span>Luogo/scena: ${escapeHtml(card.originLocation)}</span>` : ""}
+        ${card.mapNote ? `<span>Nota mappa: ${escapeHtml(card.mapNote)}</span>` : ""}
         <span>Autore card: ${escapeHtml(card.cardAuthor)}</span>
         ${formatContact(card.authorContact)}
         <span>Data: ${escapeHtml(card.createdAt)}</span>
+      </div>
+
+      <div class="release-actions">
+        ${
+          card.spotifyTrackId
+            ? `<a class="hero-cta compact" href="https://open.spotify.com/track/${escapeAttr(card.spotifyTrackId)}" target="_blank" rel="noopener noreferrer">▶ Apri su Spotify</a>`
+            : ""
+        }
+
+        <button class="ghost-button danger" type="button" onclick="window.segnale01SelectForDelete('${escapeAttr(card.id)}')">
+          Seleziona per cancellazione
+        </button>
       </div>
     </div>
   `;
@@ -481,6 +766,12 @@ function openCard(id) {
   modal.classList.add("is-open");
   modal.setAttribute("aria-hidden", "false");
 }
+
+window.segnale01SelectForDelete = function(id) {
+  selectedCardIds.add(id);
+  closeModal();
+  render();
+};
 
 function artistPhotoHtml(card) {
   if (!card.artistPhoto) return `<span>◎</span>`;
@@ -508,8 +799,26 @@ function formatContact(contact = "") {
 }
 
 function closeModal() {
-  modal.classList.remove("is-open");
-  modal.setAttribute("aria-hidden", "true");
+  modal?.classList.remove("is-open");
+  modal?.setAttribute("aria-hidden", "true");
+}
+
+function popularityX(card) {
+  const popularity = Number(card.spotifyPopularity || card.spotifyArtistPopularity || 0);
+  return 260 + (clamp(popularity, 0, 100) / 100) * (WORLD_WIDTH - 520);
+}
+
+function hashToRange(value, min, max) {
+  let hash = 0;
+  const str = value || "unknown";
+
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+
+  const normalized = Math.abs(hash % 10000) / 10000;
+  return min + normalized * (max - min);
 }
 
 function setStatus(message) {
@@ -523,6 +832,31 @@ function setStatus(message) {
   }
 
   if (status) status.textContent = message;
+}
+
+function setLookupStatus(message, isError = false) {
+  if (!spotifyLookupStatus) return;
+
+  spotifyLookupStatus.textContent = message;
+  spotifyLookupStatus.style.color = isError ? "#ff8a8a" : "";
+}
+
+function getInputValue(nameOrId) {
+  const el =
+    document.getElementById(nameOrId) ||
+    form?.querySelector(`[name="${nameOrId}"]`);
+
+  return el ? el.value.trim() : "";
+}
+
+function setInputValue(nameOrId, value) {
+  const el =
+    document.getElementById(nameOrId) ||
+    form?.querySelector(`[name="${nameOrId}"]`);
+
+  if (el && value !== undefined && value !== null) {
+    el.value = value;
+  }
 }
 
 function splitTerms(value = "") {
