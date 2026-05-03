@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backstage | ZEROUAN INC.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <header>
+    <div class="container navbar">
+      <a class="brand" href="index.html">ZEROUAN <span>INC.</span></a>
+
+      <nav class="nav-links">
+        <a href="index.html#musica">Musica</a>
+        <a href="index.html#connessioni">Connessioni</a>
+        <a href="index.html#sections">Progetti</a>
+        <a href="index.html#galleria">Gallery</a>
+      </nav>
+
+      <a class="nav-cta" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+        Ascoltami su Spotify ●
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <section class="gallery-section archive-page">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Archivio visivo</p>
+          <h2>Backstage</h2>
+          <p>Studio, prove, registrazioni e momenti dietro le quinte.</p>
+        </div>
+
+        <div class="archive-gallery-grid">
+          <button class="archive-photo gallery-lightbox-trigger" type="button" data-full="assets/gallery/schermo.jpeg">
+            <img src="assets/gallery/schermo.jpeg" alt="Backstage 01" loading="lazy">
+          </button>
+
+          <button class="archive-photo gallery-lightbox-trigger" type="button" data-full="assets/gallery/cavalco.JPEG">
+            <img src="assets/gallery/cavalco.JPEG" alt="Backstage 02" loading="lazy">
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="gallery-lightbox" id="galleryLightbox" aria-hidden="true">
+    <button class="lightbox-close" type="button" aria-label="Chiudi immagine">×</button>
+    <img class="lightbox-image" id="lightboxImage" src="" alt="Immagine ingrandita">
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
