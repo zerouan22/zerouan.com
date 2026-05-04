@@ -750,4 +750,35 @@
   font-size: 0.78rem;
   line-height: 1.45;
 }
+
+.sound-nodes {
+  pointer-events: none;
+}
+
+.sound-node {
+  pointer-events: auto;
+  user-select: none;
+  will-change: left, top, transform;
+}
+
+.sound-node.is-selected {
+  border-color: rgba(255, 88, 88, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(255, 88, 88, 0.28),
+    0 0 42px rgba(255, 88, 88, 0.28),
+    0 28px 80px rgba(0,0,0,0.45);
+}
+
+.selected-badge {
+  margin-top: 10px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(255, 88, 88, 0.16);
+  border: 1px solid rgba(255, 88, 88, 0.44);
+  color: #ff9b9b;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+}
 }

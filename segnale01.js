@@ -1,14 +1,16 @@
 // ======================================
 // SEGNALE 01 — SUPABASE + SPOTIFY + D3
+// Versione: grafo fluido + selezione delete + focus ultimo update
 // ======================================
 
 const SUPABASE_URL = "https://ewmbfgosevasgnbzyodd.supabase.co";
 const SUPABASE_KEY = "sb_publishable_gwREOykgdAH-CzlOT5kzmw_0wvI6jtf";
 
-const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
+const WORLD_WIDTH = 3000;
+const WORLD_HEIGHT = 2000;
 
-const WORLD_WIDTH = 2600;
-const WORLD_HEIGHT = 1700;
+const DEFAULT_ZOOM = 0.48;
+const FOCUS_ZOOM = 0.72;
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -16,7 +18,11 @@ let cards = [];
 let simulation = null;
 let zoomBehavior = null;
 let currentTransform = d3.zoomIdentity;
+
 let selectedCardIds = new Set();
+let selectionMode = false;
+let spotifyCache = null;
+let hasFocusedInitialUpdate = false;
 
 const form = document.getElementById("soundCardForm");
 const map = document.getElementById("soundMap");
@@ -39,20 +45,28 @@ const modal = document.getElementById("cardModal");
 const modalContent = document.getElementById("modalContent");
 const closeModalBtn = document.getElementById("closeModalBtn");
 
-let spotifyCache = null;
-
 init();
 
 async function init() {
   setStatus("Connessione alla Costellazione Segnale 01...");
+
   prepareMapDom();
   bindEvents();
   setupZoom();
+
   await loadCards();
   subscribeRealtime();
   render();
-  centerMap();
+
+  setTimeout(() => {
+    focusLatestCardOrCenter();
+    hasFocusedInitialUpdate = true;
+  }, 700);
 }
+
+// ===============================
+// SETUP DOM / EVENTI
+// ===============================
 
 function prepareMapDom() {
   if (!map || !graphViewport || !nodesLayer || !linksSvg) return;
@@ -68,9 +82,24 @@ function prepareMapDom() {
 function bindEvents() {
   form?.addEventListener("submit", handleSubmit);
 
-  genreFilter?.addEventListener("change", render);
-  searchCards?.addEventListener("input", render);
-  mapModeSelect?.addEventListener("change", render);
+  genreFilter?.addEventListener("change", () => {
+    selectedCardIds.clear();
+    render();
+  });
+
+  searchCards?.addEventListener("input", () => {
+    selectedCardIds.clear();
+    render();
+  });
+
+  mapModeSelect?.addEventListener("change", () => {
+    selectedCardIds.clear();
+    render();
+
+    setTimeout(() => {
+      centerVisibleGraph();
+    }, 500);
+  });
 
   resetViewBtn?.addEventListener("click", resetGraphLayout);
 
@@ -78,12 +107,15 @@ function bindEvents() {
     reloadBtn.textContent = "Ricarica mappa";
     reloadBtn.addEventListener("click", async () => {
       await loadCards();
+      selectedCardIds.clear();
       render();
+      setTimeout(focusLatestCardOrCenter, 500);
     });
   }
 
-  centerMapBtn?.addEventListener("click", centerMap);
-  deleteSelectedBtn?.addEventListener("click", deleteSelectedCards);
+  centerMapBtn?.addEventListener("click", centerVisibleGraph);
+  deleteSelectedBtn?.addEventListener("click", handleDeleteButton);
+
   spotifyLookupBtn?.addEventListener("click", lookupSpotify);
 
   closeModalBtn?.addEventListener("click", closeModal);
@@ -93,7 +125,17 @@ function bindEvents() {
   });
 
   window.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeModal();
+    if (event.key === "Escape") {
+      closeModal();
+
+      if (selectionMode) {
+        selectionMode = false;
+        selectedCardIds.clear();
+        updateDeleteButtonLabel();
+        render();
+        setStatus("Modalità selezione annullata.");
+      }
+    }
   });
 
   window.addEventListener("resize", () => {
@@ -105,32 +147,23 @@ function setupZoom() {
   if (!map || !graphViewport) return;
 
   zoomBehavior = d3.zoom()
-    .scaleExtent([0.18, 2.2])
+    .scaleExtent([0.16, 2.4])
+    .filter(event => {
+      if (event.target.closest?.(".sound-node")) return false;
+      return true;
+    })
     .on("zoom", event => {
       currentTransform = event.transform;
-      graphViewport.style.transform = `translate(${currentTransform.x}px, ${currentTransform.y}px) scale(${currentTransform.k})`;
+      graphViewport.style.transform =
+        `translate(${currentTransform.x}px, ${currentTransform.y}px) scale(${currentTransform.k})`;
     });
 
   d3.select(map).call(zoomBehavior);
 }
 
-function centerMap() {
-  if (!map || !zoomBehavior) return;
-
-  const rect = map.getBoundingClientRect();
-  const scale = 0.42;
-
-  const x = rect.width / 2 - (WORLD_WIDTH * scale) / 2;
-  const y = rect.height / 2 - (WORLD_HEIGHT * scale) / 2;
-
-  d3.select(map)
-    .transition()
-    .duration(650)
-    .call(
-      zoomBehavior.transform,
-      d3.zoomIdentity.translate(x, y).scale(scale)
-    );
-}
+// ===============================
+// SUPABASE
+// ===============================
 
 async function loadCards() {
   const { data, error } = await supabaseClient
@@ -173,9 +206,9 @@ function normalizeDbCard(row) {
     spotifyPopularity: Number(row.spotify_popularity) || 0,
     spotifyArtistPopularity: Number(row.spotify_artist_popularity) || 0,
     spotifyArtistGenres: row.spotify_artist_genres || "",
-    createdAt: row.created_at ? row.created_at.slice(0, 10) : "",
-    x: Number(row.x) || 50,
-    y: Number(row.y) || 50
+    createdAt: row.created_at || "",
+    x: Number(row.x) || WORLD_WIDTH / 2,
+    y: Number(row.y) || WORLD_HEIGHT / 2
   };
 }
 
@@ -189,13 +222,27 @@ function subscribeRealtime() {
         schema: "public",
         table: "sound_cards"
       },
-      async () => {
+      async payload => {
         await loadCards();
+
+        if (payload.eventType === "DELETE") {
+          selectedCardIds.delete(payload.old?.id);
+        }
+
         render();
+
+        if (!hasFocusedInitialUpdate) {
+          setTimeout(focusLatestCardOrCenter, 500);
+          hasFocusedInitialUpdate = true;
+        }
       }
     )
     .subscribe();
 }
+
+// ===============================
+// SPOTIFY LOOKUP
+// ===============================
 
 async function lookupSpotify() {
   const trackTitle = getInputValue("trackTitle");
@@ -209,29 +256,34 @@ async function lookupSpotify() {
   setLookupStatus("Ricerca Spotify in corso...", false);
 
   try {
-    const res = await fetch(`${FUNCTIONS_BASE}/spotify-lookup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`
-      },
-      body: JSON.stringify({ trackTitle, artistName })
+    const { data, error } = await supabaseClient.functions.invoke("spotify-lookup", {
+      body: {
+        trackTitle,
+        artistName
+      }
     });
 
-    const payload = await res.json();
-
-    if (!res.ok || payload.error) {
-      throw new Error(payload.error || "Errore ricerca Spotify.");
+    if (error) {
+      throw error;
     }
 
-    spotifyCache = payload.result;
-    applySpotifyResult(payload.result);
+    if (!data || data.error) {
+      throw new Error(data?.error || "Risposta Spotify non valida.");
+    }
 
-    setLookupStatus(`Trovato: ${payload.result.trackTitle} — ${payload.result.artistName}`, false);
+    spotifyCache = data.result;
+    applySpotifyResult(data.result);
+
+    setLookupStatus(
+      `Trovato: ${data.result.trackTitle} — ${data.result.artistName}`,
+      false
+    );
   } catch (error) {
-    console.error(error);
-    setLookupStatus(`Errore Spotify: ${error.message}`, true);
+    console.error("Errore spotify-lookup:", error);
+    setLookupStatus(
+      "Errore Spotify: Edge Function non raggiungibile o non configurata.",
+      true
+    );
   }
 }
 
@@ -242,15 +294,21 @@ function applySpotifyResult(result) {
   setInputValue("artistPhoto", result.artistPhoto);
   setInputValue("coverUrl", result.coverUrl);
 
+  const spotifyGenres = result.spotifyArtistGenres || "";
+
   if (!getInputValue("primaryGenre")) {
-    const firstGenre = splitTerms(result.spotifyArtistGenres)[0] || "";
+    const firstGenre = splitTerms(spotifyGenres)[0] || "";
     setInputValue("primaryGenre", firstGenre);
   }
 
   if (!getInputValue("secondaryGenres")) {
-    setInputValue("secondaryGenres", result.spotifyArtistGenres || "");
+    setInputValue("secondaryGenres", spotifyGenres);
   }
 }
+
+// ===============================
+// SUBMIT CARD
+// ===============================
 
 async function handleSubmit(event) {
   event.preventDefault();
@@ -303,9 +361,23 @@ async function handleSubmit(event) {
   form.reset();
   setLookupStatus("Inserisci brano/artista e cerca.", false);
   setStatus("Sound Card depositata nella mappa condivisa.");
+
+  setTimeout(focusLatestCardOrCenter, 900);
 }
 
 function initialPositionForNewCard(index) {
+  const latest = getLatestCard();
+
+  if (latest) {
+    const angle = index * 0.82;
+    const radius = 260 + Math.min(index * 8, 460);
+
+    return {
+      x: clamp(latest.x + Math.cos(angle) * radius, 180, WORLD_WIDTH - 180),
+      y: clamp(latest.y + Math.sin(angle) * radius, 180, WORLD_HEIGHT - 180)
+    };
+  }
+
   const angle = index * 0.72;
   const radius = 260 + Math.min(index * 9, 420);
 
@@ -314,6 +386,10 @@ function initialPositionForNewCard(index) {
     y: WORLD_HEIGHT / 2 + Math.sin(angle) * radius
   };
 }
+
+// ===============================
+// RENDER GRAFO
+// ===============================
 
 function render() {
   if (!map || !nodesLayer || !linksSvg) return;
@@ -327,6 +403,7 @@ function render() {
   linksSvg.innerHTML = "";
 
   renderGraph(visibleCards, links);
+  updateDeleteButtonLabel();
 }
 
 function renderGraph(visibleCards, links) {
@@ -335,7 +412,8 @@ function renderGraph(visibleCards, links) {
   const d3Nodes = visibleCards.map(card => ({
     ...card,
     x: Number(card.x) || WORLD_WIDTH / 2,
-    y: Number(card.y) || WORLD_HEIGHT / 2
+    y: Number(card.y) || WORLD_HEIGHT / 2,
+    wasDragged: false
   }));
 
   const d3Links = links.map(link => ({
@@ -347,10 +425,11 @@ function renderGraph(visibleCards, links) {
   if (simulation) simulation.stop();
 
   simulation = d3.forceSimulation(d3Nodes)
-    .force("charge", d3.forceManyBody().strength(mode === "popularity" ? -620 : -860))
-    .force("collision", d3.forceCollide().radius(138))
-    .alpha(0.95)
-    .alphaDecay(0.018);
+    .force("charge", d3.forceManyBody().strength(getChargeStrength(mode)))
+    .force("collision", d3.forceCollide().radius(150).strength(0.82))
+    .velocityDecay(0.34)
+    .alpha(0.92)
+    .alphaDecay(0.010);
 
   if (mode === "constellation") {
     simulation
@@ -359,55 +438,56 @@ function renderGraph(visibleCards, links) {
         d3.forceLink(d3Links)
           .id(d => d.id)
           .distance(d => {
-            if (d.strength === "strong") return 185;
-            if (d.strength === "medium") return 270;
-            return 390;
+            if (d.strength === "strong") return 260;
+            if (d.strength === "medium") return 360;
+            return 520;
           })
           .strength(d => {
-            if (d.strength === "strong") return 0.34;
-            if (d.strength === "medium") return 0.16;
-            return 0.055;
+            if (d.strength === "strong") return 0.11;
+            if (d.strength === "medium") return 0.055;
+            return 0.018;
           })
       )
-      .force("center", d3.forceCenter(WORLD_WIDTH / 2, WORLD_HEIGHT / 2));
+      .force("x", d3.forceX(WORLD_WIDTH / 2).strength(0.018))
+      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.018));
   }
 
   if (mode === "popularity") {
     simulation
-      .force("x", d3.forceX(d => popularityX(d)).strength(0.21))
-      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.08))
+      .force("x", d3.forceX(d => popularityX(d)).strength(0.12))
+      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.045))
       .force(
         "link",
         d3.forceLink(d3Links)
           .id(d => d.id)
-          .distance(260)
-          .strength(0.05)
+          .distance(340)
+          .strength(0.025)
       );
   }
 
   if (mode === "artist") {
     simulation
-      .force("x", d3.forceX(d => hashToRange(normalize(d.artistName), 360, WORLD_WIDTH - 360)).strength(0.18))
-      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.08))
+      .force("x", d3.forceX(d => hashToRange(normalize(d.artistName), 380, WORLD_WIDTH - 380)).strength(0.11))
+      .force("y", d3.forceY(WORLD_HEIGHT / 2).strength(0.05))
       .force(
         "link",
         d3.forceLink(d3Links)
           .id(d => d.id)
-          .distance(230)
-          .strength(0.12)
+          .distance(320)
+          .strength(0.045)
       );
   }
 
   if (mode === "place") {
     simulation
-      .force("x", d3.forceX(d => hashToRange(normalize(d.originLocation || "unknown"), 360, WORLD_WIDTH - 360)).strength(0.18))
-      .force("y", d3.forceY(d => hashToRange(normalize(d.originLocation || "unknown-y"), 280, WORLD_HEIGHT - 280)).strength(0.16))
+      .force("x", d3.forceX(d => hashToRange(normalize(d.originLocation || "unknown"), 380, WORLD_WIDTH - 380)).strength(0.11))
+      .force("y", d3.forceY(d => hashToRange(normalize(d.originLocation || "unknown-y"), 300, WORLD_HEIGHT - 300)).strength(0.10))
       .force(
         "link",
         d3.forceLink(d3Links)
           .id(d => d.id)
-          .distance(260)
-          .strength(0.07)
+          .distance(350)
+          .strength(0.025)
       );
   }
 
@@ -429,7 +509,14 @@ function renderGraph(visibleCards, links) {
     .attr("aria-label", d => `Apri Sound Card ${d.trackTitle} di ${d.artistName}`)
     .html(d => nodeHtml(d))
     .on("click", (event, d) => {
-      if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      event.stopPropagation();
+
+      if (d.wasDragged) {
+        d.wasDragged = false;
+        return;
+      }
+
+      if (selectionMode || event.shiftKey || event.ctrlKey || event.metaKey) {
         toggleSelected(d.id);
         render();
         return;
@@ -440,11 +527,20 @@ function renderGraph(visibleCards, links) {
     .on("keydown", (event, d) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        openCard(d.id);
+
+        if (selectionMode) {
+          toggleSelected(d.id);
+          render();
+        } else {
+          openCard(d.id);
+        }
       }
     })
     .call(
       d3.drag()
+        .filter(event => {
+          return !event.button && !selectionMode;
+        })
         .on("start", dragStarted)
         .on("drag", dragged)
         .on("end", dragEnded)
@@ -452,35 +548,59 @@ function renderGraph(visibleCards, links) {
 
   simulation.on("tick", () => {
     linkSelection
-      .attr("x1", d => clamp(d.source.x, 30, WORLD_WIDTH - 30))
-      .attr("y1", d => clamp(d.source.y, 30, WORLD_HEIGHT - 30))
-      .attr("x2", d => clamp(d.target.x, 30, WORLD_WIDTH - 30))
-      .attr("y2", d => clamp(d.target.y, 30, WORLD_HEIGHT - 30));
+      .attr("x1", d => clamp(d.source.x, 40, WORLD_WIDTH - 40))
+      .attr("y1", d => clamp(d.source.y, 40, WORLD_HEIGHT - 40))
+      .attr("x2", d => clamp(d.target.x, 40, WORLD_WIDTH - 40))
+      .attr("y2", d => clamp(d.target.y, 40, WORLD_HEIGHT - 40));
 
     nodeSelection
-      .style("left", d => `${clamp(d.x, 120, WORLD_WIDTH - 120)}px`)
-      .style("top", d => `${clamp(d.y, 150, WORLD_HEIGHT - 150)}px`);
+      .style("left", d => `${clamp(d.x, 130, WORLD_WIDTH - 130)}px`)
+      .style("top", d => `${clamp(d.y, 160, WORLD_HEIGHT - 160)}px`);
   });
 
   function dragStarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.18).restart();
+    event.sourceEvent?.stopPropagation?.();
+
+    if (!event.active) {
+      simulation.alphaTarget(0.06).restart();
+    }
+
+    d.startX = d.x;
+    d.startY = d.y;
     d.fx = d.x;
     d.fy = d.y;
+    d.wasDragged = false;
   }
 
   function dragged(event, d) {
-    d.fx = clamp(event.x, 110, WORLD_WIDTH - 110);
-    d.fy = clamp(event.y, 140, WORLD_HEIGHT - 140);
+    event.sourceEvent?.stopPropagation?.();
+
+    const dx = Math.abs(event.x - d.startX);
+    const dy = Math.abs(event.y - d.startY);
+
+    if (dx + dy > 5) {
+      d.wasDragged = true;
+    }
+
+    d.fx = clamp(event.x, 120, WORLD_WIDTH - 120);
+    d.fy = clamp(event.y, 150, WORLD_HEIGHT - 150);
+
+    d.x = d.fx;
+    d.y = d.fy;
   }
 
   async function dragEnded(event, d) {
-    if (!event.active) simulation.alphaTarget(0);
+    event.sourceEvent?.stopPropagation?.();
+
+    if (!event.active) {
+      simulation.alphaTarget(0);
+    }
+
+    const newX = clamp(d.x, 100, WORLD_WIDTH - 100);
+    const newY = clamp(d.y, 100, WORLD_HEIGHT - 100);
 
     d.fx = null;
     d.fy = null;
-
-    const newX = clamp(d.x, 80, WORLD_WIDTH - 80);
-    const newY = clamp(d.y, 80, WORLD_HEIGHT - 80);
 
     const { error } = await supabaseClient
       .from("sound_cards")
@@ -492,6 +612,14 @@ function renderGraph(visibleCards, links) {
       setStatus("Posizione non salvata. Controlla policy UPDATE.");
     }
   }
+}
+
+function getChargeStrength(mode) {
+  if (mode === "constellation") return -980;
+  if (mode === "popularity") return -760;
+  if (mode === "artist") return -820;
+  if (mode === "place") return -820;
+  return -900;
 }
 
 function nodeHtml(card) {
@@ -518,9 +646,19 @@ function nodeHtml(card) {
             : ""
         }
       </div>
+
+      ${
+        selectedCardIds.has(card.id)
+          ? `<div class="selected-badge">Selezionata</div>`
+          : ""
+      }
     </div>
   `;
 }
+
+// ===============================
+// LINK / CONNESSIONI
+// ===============================
 
 function buildLinks(list) {
   const links = [];
@@ -565,6 +703,10 @@ function calculateLink(a, b) {
 
   return null;
 }
+
+// ===============================
+// FILTRI / MODALITÀ MAPPA
+// ===============================
 
 function getVisibleCards() {
   const selectedGenre = genreFilter?.value || "all";
@@ -615,6 +757,70 @@ function updateGenreFilter() {
   genreFilter.value = genres.includes(current) ? current : "all";
 }
 
+// ===============================
+// CENTRATURA / FOCUS
+// ===============================
+
+function focusLatestCardOrCenter() {
+  const latest = getLatestCard();
+
+  if (!latest) {
+    centerMap();
+    return;
+  }
+
+  focusWorldPoint(latest.x, latest.y, FOCUS_ZOOM);
+  setStatus(`Mappa centrata sull’ultimo segnale: ${latest.trackTitle} — ${latest.artistName}`);
+}
+
+function getLatestCard() {
+  if (!cards.length) return null;
+
+  return [...cards].sort((a, b) => {
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+  })[0];
+}
+
+function centerMap() {
+  focusWorldPoint(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, DEFAULT_ZOOM);
+}
+
+function centerVisibleGraph() {
+  const visible = getVisibleCards();
+
+  if (!visible.length) {
+    centerMap();
+    return;
+  }
+
+  const avgX = d3.mean(visible, d => Number(d.x) || WORLD_WIDTH / 2);
+  const avgY = d3.mean(visible, d => Number(d.y) || WORLD_HEIGHT / 2);
+
+  focusWorldPoint(avgX, avgY, DEFAULT_ZOOM);
+}
+
+function focusWorldPoint(worldX, worldY, scale = DEFAULT_ZOOM) {
+  if (!map || !zoomBehavior) return;
+
+  const rect = map.getBoundingClientRect();
+
+  const x = rect.width / 2 - worldX * scale;
+  const y = rect.height / 2 - worldY * scale;
+
+  d3.select(map)
+    .transition()
+    .duration(760)
+    .ease(d3.easeCubicOut)
+    .call(
+      zoomBehavior.transform,
+      d3.zoomIdentity.translate(x, y).scale(scale)
+    );
+}
+
+// ===============================
+// RESET LAYOUT
+// ===============================
+
 async function resetGraphLayout() {
   const updates = cards.map((card, index) => {
     const pos = initialPositionForNewCard(index);
@@ -634,8 +840,34 @@ async function resetGraphLayout() {
   }
 
   await loadCards();
+  selectedCardIds.clear();
   render();
-  centerMap();
+
+  setTimeout(focusLatestCardOrCenter, 600);
+}
+
+// ===============================
+// SELEZIONE / CANCELLAZIONE
+// ===============================
+
+function handleDeleteButton() {
+  if (!selectionMode && selectedCardIds.size === 0) {
+    selectionMode = true;
+    updateDeleteButtonLabel();
+    setStatus("Modalità cancellazione attiva: clicca le card da selezionare, poi ripremi il bottone Cancella.");
+    render();
+    return;
+  }
+
+  if (selectionMode && selectedCardIds.size === 0) {
+    selectionMode = false;
+    updateDeleteButtonLabel();
+    setStatus("Modalità cancellazione annullata: nessuna card selezionata.");
+    render();
+    return;
+  }
+
+  deleteSelectedCards();
 }
 
 function toggleSelected(id) {
@@ -644,11 +876,38 @@ function toggleSelected(id) {
   } else {
     selectedCardIds.add(id);
   }
+
+  updateDeleteButtonLabel();
+
+  if (selectedCardIds.size > 0) {
+    setStatus(`${selectedCardIds.size} card selezionata/e per cancellazione.`);
+  } else if (selectionMode) {
+    setStatus("Modalità cancellazione attiva: seleziona una o più card.");
+  }
+}
+
+function updateDeleteButtonLabel() {
+  if (!deleteSelectedBtn) return;
+
+  if (selectedCardIds.size > 0) {
+    deleteSelectedBtn.textContent = `Cancella ${selectedCardIds.size} selezionata/e`;
+    deleteSelectedBtn.classList.add("danger");
+    return;
+  }
+
+  if (selectionMode) {
+    deleteSelectedBtn.textContent = "Annulla selezione";
+    deleteSelectedBtn.classList.add("danger");
+    return;
+  }
+
+  deleteSelectedBtn.textContent = "Cancella selezionate";
+  deleteSelectedBtn.classList.add("danger");
 }
 
 async function deleteSelectedCards() {
   if (selectedCardIds.size === 0) {
-    alert("Seleziona almeno una card con CTRL+click o SHIFT+click.");
+    setStatus("Nessuna card selezionata.");
     return;
   }
 
@@ -657,34 +916,35 @@ async function deleteSelectedCards() {
   if (!password) return;
 
   try {
-    const res = await fetch(`${FUNCTIONS_BASE}/delete-card`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`
-      },
-      body: JSON.stringify({
+    const { data, error } = await supabaseClient.functions.invoke("delete-card", {
+      body: {
         cardIds: [...selectedCardIds],
         password
-      })
+      }
     });
 
-    const payload = await res.json();
+    if (error) throw error;
 
-    if (!res.ok || payload.error) {
-      throw new Error(payload.error || "Errore cancellazione.");
+    if (!data || data.error) {
+      throw new Error(data?.error || "Errore cancellazione.");
     }
 
     selectedCardIds.clear();
+    selectionMode = false;
+
     await loadCards();
     render();
+
     setStatus("Card cancellate correttamente.");
   } catch (error) {
-    console.error(error);
-    alert(`Cancellazione fallita: ${error.message}`);
+    console.error("Errore delete-card:", error);
+    alert(`Cancellazione fallita: ${error.message || "Edge Function non raggiungibile."}`);
   }
 }
+
+// ===============================
+// MODALE CARD
+// ===============================
 
 function openCard(id) {
   const card = cards.find(item => item.id === id);
@@ -746,7 +1006,7 @@ function openCard(id) {
         ${card.mapNote ? `<span>Nota mappa: ${escapeHtml(card.mapNote)}</span>` : ""}
         <span>Autore card: ${escapeHtml(card.cardAuthor)}</span>
         ${formatContact(card.authorContact)}
-        <span>Data: ${escapeHtml(card.createdAt)}</span>
+        <span>Data: ${formatDate(card.createdAt)}</span>
       </div>
 
       <div class="release-actions">
@@ -769,8 +1029,10 @@ function openCard(id) {
 
 window.segnale01SelectForDelete = function(id) {
   selectedCardIds.add(id);
+  selectionMode = true;
   closeModal();
   render();
+  setStatus(`${selectedCardIds.size} card selezionata/e per cancellazione.`);
 };
 
 function artistPhotoHtml(card) {
@@ -803,9 +1065,13 @@ function closeModal() {
   modal?.setAttribute("aria-hidden", "true");
 }
 
+// ===============================
+// UTILITY MAPPE
+// ===============================
+
 function popularityX(card) {
   const popularity = Number(card.spotifyPopularity || card.spotifyArtistPopularity || 0);
-  return 260 + (clamp(popularity, 0, 100) / 100) * (WORLD_WIDTH - 520);
+  return 280 + (clamp(popularity, 0, 100) / 100) * (WORLD_WIDTH - 560);
 }
 
 function hashToRange(value, min, max) {
@@ -820,6 +1086,10 @@ function hashToRange(value, min, max) {
   const normalized = Math.abs(hash % 10000) / 10000;
   return min + normalized * (max - min);
 }
+
+// ===============================
+// UTILITY FORM / TESTI
+// ===============================
 
 function setStatus(message) {
   let status = document.getElementById("signalStatus");
@@ -876,6 +1146,15 @@ function clean(value = "") {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function formatDate(value = "") {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("it-IT");
 }
 
 function escapeHtml(value = "") {
