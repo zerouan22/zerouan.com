@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ZEROUAN INC. — pannello amministrazione news." />
+  <title>ZEROUAN INC. | Admin News</title>
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="news.css">
+</head>
+<body>
+  <!--
+    ATTENZIONE SEVERA:
+    Questa pagina è un prototipo statico. La password lato browser NON è vera sicurezza.
+    Per usarla online in modo serio, proteggi admin-news.html lato hosting/server:
+    - Basic Auth server-side
+    - Netlify/Vercel auth
+    - area riservata con backend
+    - CMS Git-based con login
+  -->
+
+  <header>
+    <div class="container navbar">
+      <a class="brand" href="index.html#top" aria-label="Torna alla homepage">ZEROUAN <span>INC.</span></a>
+
+      <nav class="nav-links" aria-label="Navigazione admin">
+        <a href="index.html#news">News pubbliche</a>
+        <a href="index.html#musica">Musica</a>
+        <a href="index.html#sections">Progetti</a>
+      </nav>
+
+      <div class="header-actions" aria-label="Azioni admin">
+        <a class="nav-cta" href="index.html#news">Vedi homepage ●</a>
+      </div>
+
+      <div class="mobile-menu-label">Admin</div>
+    </div>
+  </header>
+
+  <main class="news-admin-shell">
+    <section class="container">
+      <div class="section-heading align-left">
+        <p class="eyebrow">Area privata</p>
+        <h1>Admin News</h1>
+        <p>
+          Compila il form, genera la news, visualizzala in anteprima ed esporta il JSON.
+          La modalità locale serve per testare. La pubblicazione reale richiede che il JSON finisca in <strong>news-data.js</strong> oppure in un backend/CMS.
+        </p>
+      </div>
+
+      <div class="admin-panel" id="accessPanel">
+        <h2>Accesso</h2>
+        <p class="admin-note">
+          Questo blocco è solo una barriera visiva. Non usarlo come sicurezza reale online.
+          Per la sicurezza vera devi proteggere il file dal pannello hosting/server.
+        </p>
+
+        <form class="news-form" id="loginForm">
+          <div class="news-form-field">
+            <label for="adminPassword">Password demo</label>
+            <input id="adminPassword" type="password" placeholder="Inserisci password demo">
+          </div>
+
+          <div class="admin-actions">
+            <button class="admin-button primary" type="submit">Entra</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="news-admin-grid" id="adminApp" hidden>
+        <div class="admin-panel">
+          <h2>Nuova news</h2>
+
+          <form class="news-form" id="newsForm">
+            <div class="news-form-row">
+              <div class="news-form-field">
+                <label for="title">Titolo *</label>
+                <input id="title" name="title" type="text" required placeholder="Es. TRIKINELLA è fuori ora">
+              </div>
+
+              <div class="news-form-field">
+                <label for="subtitle">Sottotitolo / kicker</label>
+                <input id="subtitle" name="subtitle" type="text" placeholder="Es. Nuova release / Backstage / Diario">
+              </div>
+            </div>
+
+            <div class="news-form-row">
+              <div class="news-form-field">
+                <label for="category">Categoria</label>
+                <select id="category" name="category">
+                  <option>Release</option>
+                  <option>Sito</option>
+                  <option>Video</option>
+                  <option>Backstage</option>
+                  <option>Diario</option>
+                  <option>Evento</option>
+                  <option>Producing</option>
+                </select>
+              </div>
+
+              <div class="news-form-field">
+                <label for="date">Data</label>
+                <input id="date" name="date" type="date">
+              </div>
+            </div>
+
+            <div class="news-form-row">
+              <div class="news-form-field">
+                <label for="author">Autore</label>
+                <input id="author" name="author" type="text" value="Zerouan">
+              </div>
+
+              <div class="news-form-field">
+                <label for="readingTime">Tempo lettura</label>
+                <input id="readingTime" name="readingTime" type="text" placeholder="Es. 2 min">
+              </div>
+            </div>
+
+            <div class="news-form-field">
+              <label for="excerpt">Descrizione breve *</label>
+              <textarea id="excerpt" name="excerpt" required placeholder="Riassunto breve che compare nella card. Deve essere chiaro e diretto."></textarea>
+            </div>
+
+            <div class="news-form-field">
+              <label for="body">Testo articolo / descrizione lunga</label>
+              <textarea id="body" name="body" placeholder="Testo più lungo: contesto, dettagli, perché è importante, cosa fare dopo."></textarea>
+            </div>
+
+            <div class="news-form-row">
+              <div class="news-form-field">
+                <label for="mediaType">Tipo media</label>
+                <select id="mediaType" name="mediaType">
+                  <option value="image">Foto / immagine</option>
+                  <option value="youtube">Video YouTube</option>
+                </select>
+              </div>
+
+              <div class="news-form-field">
+                <label for="mediaUrl">Link immagine o YouTube</label>
+                <input id="mediaUrl" name="mediaUrl" type="url" placeholder="assets/gallery/foto.jpeg oppure https://youtu.be/...">
+              </div>
+            </div>
+
+            <div class="news-form-field">
+              <label for="mediaAlt">Testo alternativo immagine</label>
+              <input id="mediaAlt" name="mediaAlt" type="text" placeholder="Descrizione accessibile dell'immagine">
+            </div>
+
+            <div class="news-form-field">
+              <label for="tags">Tag separati da virgola</label>
+              <input id="tags" name="tags" type="text" placeholder="musica, release, zerouan, backstage">
+            </div>
+
+            <div class="news-form-row">
+              <div class="news-form-field">
+                <label for="ctaLabel">CTA principale</label>
+                <input id="ctaLabel" name="ctaLabel" type="text" placeholder="Es. Ascolta ora">
+              </div>
+
+              <div class="news-form-field">
+                <label for="ctaUrl">Link CTA principale</label>
+                <input id="ctaUrl" name="ctaUrl" type="url" placeholder="https://...">
+              </div>
+            </div>
+
+            <div class="news-form-field">
+              <label>Link esterni clickabili</label>
+              <div class="dynamic-list" id="linksList"></div>
+              <button class="admin-button" type="button" id="addLinkButton">+ Aggiungi link</button>
+            </div>
+
+            <div class="news-form-row">
+              <div class="news-form-field">
+                <label for="status">Stato</label>
+                <select id="status" name="status">
+                  <option value="published">Pubblicata</option>
+                  <option value="draft">Bozza</option>
+                </select>
+              </div>
+
+              <div class="news-form-field">
+                <label for="featured">Evidenza</label>
+                <select id="featured" name="featured">
+                  <option value="false">Normale</option>
+                  <option value="true">In evidenza</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="admin-actions">
+              <button class="admin-button primary" type="submit">Genera news</button>
+              <button class="admin-button" type="button" id="previewButton">Aggiorna anteprima</button>
+              <button class="admin-button" type="reset">Pulisci form</button>
+            </div>
+          </form>
+        </div>
+
+        <aside class="admin-panel">
+          <h2>Anteprima</h2>
+          <article class="news-card" id="previewCard">
+            <div class="news-empty-state">
+              <span class="news-empty-icon">Z</span>
+              <strong>Compila il form.</strong>
+              <small>Qui vedrai la news prima di esportarla.</small>
+            </div>
+          </article>
+
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.12); margin: 1.25rem 0;">
+
+          <h2>Output JSON</h2>
+          <p class="admin-note">
+            Per pubblicare su sito statico: copia l'oggetto generato dentro l'array <strong>window.ZEROUAN_NEWS_DATA</strong> in <strong>news-data.js</strong>.
+          </p>
+
+          <textarea class="generated-output" id="generatedOutput" readonly placeholder="Qui comparirà il JSON della news."></textarea>
+
+          <div class="admin-actions">
+            <button class="admin-button" type="button" id="copyJsonButton">Copia JSON</button>
+            <button class="admin-button" type="button" id="saveLocalButton">Salva preview locale</button>
+            <button class="admin-button danger" type="button" id="clearLocalButton">Svuota news locali</button>
+          </div>
+
+          <p class="admin-note">
+            “Salva preview locale” modifica solo il tuo browser. Non pubblica la news per gli altri visitatori.
+          </p>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const DEMO_PASSWORD = "ZEROUAN-ADMIN-2026"; // Cambiala, ma ricorda: nel browser NON è sicurezza reale.
+      const STORAGE_KEY = "zerouan_news_items";
+
+      const accessPanel = document.getElementById("accessPanel");
+      const adminApp = document.getElementById("adminApp");
+      const loginForm = document.getElementById("loginForm");
+      const passwordInput = document.getElementById("adminPassword");
+
+      const form = document.getElementById("newsForm");
+      const linksList = document.getElementById("linksList");
+      const addLinkButton = document.getElementById("addLinkButton");
+      const previewButton = document.getElementById("previewButton");
+      const output = document.getElementById("generatedOutput");
+      const previewCard = document.getElementById("previewCard");
+      const copyJsonButton = document.getElementById("copyJsonButton");
+      const saveLocalButton = document.getElementById("saveLocalButton");
+      const clearLocalButton = document.getElementById("clearLocalButton");
+
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById("date").value = today;
+
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        if (passwordInput.value === DEMO_PASSWORD) {
+          sessionStorage.setItem("zerouan_admin_demo_access", "true");
+          showAdmin();
+          return;
+        }
+
+        alert("Password demo errata.");
+      });
+
+      if (sessionStorage.getItem("zerouan_admin_demo_access") === "true") {
+        showAdmin();
+      }
+
+      function showAdmin() {
+        accessPanel.hidden = true;
+        adminApp.hidden = false;
+      }
+
+      function slugify(value) {
+        return String(value || "news")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)+/g, "")
+          .slice(0, 72) || `news-${Date.now()}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function youtubeEmbedUrl(url) {
+        const raw = String(url || "").trim();
+        if (!raw) return "";
+
+        try {
+          const parsed = new URL(raw);
+          let id = "";
+
+          if (parsed.hostname.includes("youtu.be")) {
+            id = parsed.pathname.replace("/", "");
+          } else if (parsed.hostname.includes("youtube.com")) {
+            id = parsed.searchParams.get("v") || "";
+            if (!id && parsed.pathname.includes("/shorts/")) {
+              id = parsed.pathname.split("/shorts/")[1]?.split("/")[0] || "";
+            }
+            if (!id && parsed.pathname.includes("/embed/")) {
+              id = parsed.pathname.split("/embed/")[1]?.split("/")[0] || "";
+            }
+          }
+
+          return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : raw;
+        } catch {
+          return raw;
+        }
+      }
+
+      function addLinkRow(label = "", url = "") {
+        const row = document.createElement("div");
+        row.className = "dynamic-row";
+
+        row.innerHTML = `
+          <input type="text" placeholder="Etichetta link" value="${escapeHtml(label)}" data-link-label>
+          <input type="url" placeholder="https://..." value="${escapeHtml(url)}" data-link-url>
+          <button class="admin-button danger" type="button" aria-label="Rimuovi link">×</button>
+        `;
+
+        row.querySelector("button").addEventListener("click", () => row.remove());
+        linksList.appendChild(row);
+      }
+
+      addLinkButton.addEventListener("click", () => addLinkRow());
+      addLinkRow("Spotify", "https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2");
+
+      function collectLinks() {
+        return [...linksList.querySelectorAll(".dynamic-row")]
+          .map((row) => {
+            const label = row.querySelector("[data-link-label]").value.trim();
+            const url = row.querySelector("[data-link-url]").value.trim();
+
+            if (!label && !url) return null;
+            return {
+              label: label || "Link esterno",
+              url
+            };
+          })
+          .filter((link) => link && link.url);
+      }
+
+      function collectNews() {
+        const data = new FormData(form);
+        const title = String(data.get("title") || "").trim();
+
+        const item = {
+          id: `${slugify(title)}-${Date.now().toString(36)}`,
+          status: String(data.get("status") || "published"),
+          featured: String(data.get("featured")) === "true",
+          title,
+          subtitle: String(data.get("subtitle") || "").trim(),
+          excerpt: String(data.get("excerpt") || "").trim(),
+          body: String(data.get("body") || "").trim(),
+          category: String(data.get("category") || "News"),
+          author: String(data.get("author") || "Zerouan").trim(),
+          date: String(data.get("date") || today),
+          readingTime: String(data.get("readingTime") || "").trim(),
+          mediaType: String(data.get("mediaType") || "image"),
+          mediaUrl: String(data.get("mediaUrl") || "").trim(),
+          mediaAlt: String(data.get("mediaAlt") || "").trim(),
+          tags: String(data.get("tags") || "")
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          links: collectLinks(),
+          ctaLabel: String(data.get("ctaLabel") || "").trim(),
+          ctaUrl: String(data.get("ctaUrl") || "").trim()
+        };
+
+        if (!item.readingTime) item.readingTime = estimateReadingTime(item.body || item.excerpt);
+        if (!item.mediaAlt && item.mediaType === "image") item.mediaAlt = item.title;
+
+        return item;
+      }
+
+      function estimateReadingTime(text) {
+        const words = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+        return `${Math.max(1, Math.ceil(words / 180))} min`;
+      }
+
+      function renderMedia(item) {
+        if (!item.mediaUrl) {
+          return `
+            <div class="news-media">
+              <div class="news-empty-state">
+                <span class="news-empty-icon">Z</span>
+                <strong>ZEROUAN INC.</strong>
+              </div>
+            </div>
+          `;
+        }
+
+        if (item.mediaType === "youtube") {
+          return `
+            <div class="news-media">
+              <iframe
+                src="${escapeHtml(youtubeEmbedUrl(item.mediaUrl))}"
+                title="${escapeHtml(item.title)}"
+                loading="lazy"
+                allowfullscreen>
+              </iframe>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="news-media">
+            <img src="${escapeHtml(item.mediaUrl)}" alt="${escapeHtml(item.mediaAlt || item.title)}">
+          </div>
+        `;
+      }
+
+      function renderPreview(item) {
+        const links = [
+          item.ctaUrl ? `<a class="news-read-more" href="${escapeHtml(item.ctaUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.ctaLabel || "Apri")} →</a>` : "",
+          ...item.links.map((link) => `<a class="news-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)} ↗</a>`)
+        ].join("");
+
+        previewCard.innerHTML = `
+          ${renderMedia(item)}
+          <div class="news-content">
+            <div class="news-meta">
+              <span class="news-category">${escapeHtml(item.category)}</span>
+              <span>${escapeHtml(item.date)}</span>
+              <span>· ${escapeHtml(item.readingTime)}</span>
+              <span>· ${escapeHtml(item.author)}</span>
+            </div>
+            <h3 class="news-title">${escapeHtml(item.title || "Titolo news")}</h3>
+            ${item.subtitle ? `<span class="release-kicker">${escapeHtml(item.subtitle)}</span>` : ""}
+            <p class="news-excerpt">${escapeHtml(item.excerpt || item.body || "Descrizione news")}</p>
+            <div class="news-tags">${item.tags.map((tag) => `<span class="news-tag">#${escapeHtml(tag)}</span>`).join("")}</div>
+            <div class="news-links">${links}</div>
+          </div>
+        `;
+      }
+
+      function generate() {
+        const item = collectNews();
+        renderPreview(item);
+        output.value = JSON.stringify(item, null, 2);
+        return item;
+      }
+
+      previewButton.addEventListener("click", generate);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const item = generate();
+
+        if (!item.title || !item.excerpt) {
+          alert("Titolo e descrizione breve sono obbligatori.");
+          return;
+        }
+
+        output.focus();
+        output.select();
+      });
+
+      copyJsonButton.addEventListener("click", async () => {
+        if (!output.value.trim()) generate();
+
+        try {
+          await navigator.clipboard.writeText(output.value);
+          alert("JSON copiato.");
+        } catch {
+          output.focus();
+          output.select();
+          document.execCommand("copy");
+          alert("JSON copiato.");
+        }
+      });
+
+      saveLocalButton.addEventListener("click", () => {
+        const item = generate();
+
+        if (!item.title || !item.excerpt) {
+          alert("Titolo e descrizione breve sono obbligatori.");
+          return;
+        }
+
+        const current = getLocalItems();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([item, ...current], null, 2));
+        alert("News salvata in preview locale. Apri index.html#news dallo stesso browser.");
+      });
+
+      clearLocalButton.addEventListener("click", () => {
+        const ok = confirm("Vuoi eliminare tutte le news salvate solo in locale?");
+        if (!ok) return;
+
+        localStorage.removeItem(STORAGE_KEY);
+        alert("News locali eliminate.");
+      });
+
+      function getLocalItems() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
