@@ -7,6 +7,424 @@
   <title>ZEROUAN INC. | Homepage</title>
 
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* === TRIKINELLA COMING SOON — homepage top section === */
+    .trikinella-launch {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      min-height: calc(100vh - 72px);
+      padding: clamp(88px, 10vw, 138px) 0 clamp(58px, 7vw, 92px);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(165, 151, 255, 0.22), transparent 32%),
+        radial-gradient(circle at 84% 14%, rgba(130, 202, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 50% 95%, rgba(161, 20, 48, 0.30), transparent 36%),
+        linear-gradient(135deg, #050508 0%, #10101a 42%, #08080d 100%);
+    }
+
+    .trikinella-launch::before {
+      content: "";
+      position: absolute;
+      inset: -12%;
+      z-index: -2;
+      background-image: url("assets/trikinella-cover.png");
+      background-size: cover;
+      background-position: center;
+      opacity: 0.13;
+      filter: blur(26px) saturate(1.25) contrast(1.05);
+      transform: scale(1.08);
+    }
+
+    .trikinella-launch::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px),
+        radial-gradient(circle at center, transparent 0 48%, rgba(0,0,0,0.52) 100%);
+      background-size: 42px 42px, 42px 42px, auto;
+    }
+
+    .trikinella-launch-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
+      gap: clamp(22px, 4vw, 44px);
+      align-items: stretch;
+    }
+
+    .trikinella-panel {
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 32px;
+      background: linear-gradient(145deg, rgba(15,16,24,0.88), rgba(8,8,13,0.78));
+      box-shadow: 0 28px 88px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.07);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .trikinella-spotify-card {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(22px, 3vw, 34px);
+    }
+
+    .trikinella-spotify-card::after {
+      content: "";
+      position: absolute;
+      right: -22%;
+      bottom: -34%;
+      width: 54%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(29,185,84,0.18), transparent 68%);
+      pointer-events: none;
+    }
+
+    .trikinella-eyebrow,
+    .trikinella-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      margin: 0 0 18px;
+      padding: 8px 12px;
+      border: 1px solid rgba(29,185,84,0.33);
+      border-radius: 999px;
+      color: #d8ffe5;
+      background: rgba(29,185,84,0.11);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .trikinella-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #1db954;
+      box-shadow: 0 0 16px rgba(29,185,84,0.78);
+    }
+
+    .trikinella-release-layout {
+      display: grid;
+      grid-template-columns: minmax(210px, 0.72fr) minmax(260px, 1fr);
+      gap: clamp(22px, 3.5vw, 36px);
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .trikinella-cover-wrap {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      background: #111;
+      box-shadow: 0 24px 70px rgba(84, 22, 43, 0.45), 0 0 0 1px rgba(255,255,255,0.15);
+      transform: rotate(-1.2deg);
+    }
+
+    .trikinella-cover-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.42), transparent 24%, rgba(29,185,84,0.18));
+      mix-blend-mode: screen;
+      pointer-events: none;
+      opacity: 0.68;
+    }
+
+    .trikinella-cover-wrap img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+
+    .trikinella-release-kicker {
+      display: block;
+      margin-bottom: 10px;
+      color: #1db954;
+      font-size: 0.86rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .trikinella-title {
+      margin: 0;
+      color: #fff;
+      font-size: clamp(2.9rem, 5.6vw, 4.85rem);
+      line-height: 0.88;
+      letter-spacing: -0.075em;
+      text-transform: uppercase;
+      text-shadow: 0 0 34px rgba(178,166,255,0.26);
+    }
+
+    .trikinella-subtitle {
+      margin: 16px 0 0;
+      max-width: 56ch;
+      color: rgba(255,255,255,0.78);
+      font-size: clamp(1rem, 1.55vw, 1.18rem);
+      line-height: 1.65;
+    }
+
+    .trikinella-date-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 22px 0 0;
+    }
+
+    .trikinella-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 13px;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 999px;
+      color: rgba(255,255,255,0.86);
+      background: rgba(255,255,255,0.055);
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .trikinella-progress { margin: 28px 0 0; }
+
+    .trikinella-progress-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      max-width: 360px;
+      color: rgba(255,255,255,0.58);
+      font-size: 0.74rem;
+      font-weight: 900;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .trikinella-progress-track {
+      width: min(360px, 100%);
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      overflow: hidden;
+    }
+
+    .trikinella-progress-fill {
+      display: block;
+      width: 84%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #1db954, #2ce276);
+      box-shadow: 0 0 22px rgba(29,185,84,0.45);
+    }
+
+    .trikinella-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+      align-items: center;
+    }
+
+    .trikinella-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(255,255,255,0.09);
+      text-decoration: none;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .trikinella-button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.28);
+      background: rgba(255,255,255,0.14);
+    }
+
+    .trikinella-button.primary {
+      color: #07100a;
+      border-color: rgba(29,185,84,0.9);
+      background: #1db954;
+      box-shadow: 0 14px 34px rgba(29,185,84,0.23);
+    }
+
+    .trikinella-button.locked {
+      color: rgba(255,255,255,0.88);
+      cursor: default;
+      background: rgba(255,255,255,0.11);
+    }
+
+    .trikinella-button.locked:hover { transform: none; }
+
+    .trikinella-mini-player {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 54px minmax(0,1fr) auto;
+      gap: 14px;
+      align-items: center;
+      margin-top: clamp(26px, 4vw, 46px);
+      padding: 16px 18px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      background: rgba(0,0,0,0.36);
+    }
+
+    .trikinella-mini-cover {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .trikinella-mini-player strong,
+    .trikinella-mini-player small {
+      display: block;
+    }
+
+    .trikinella-mini-player strong { color: #fff; }
+    .trikinella-mini-player small { color: rgba(255,255,255,0.56); margin-top: 3px; }
+
+    .trikinella-eq {
+      display: inline-flex;
+      align-items: end;
+      gap: 5px;
+      height: 36px;
+    }
+
+    .trikinella-eq span {
+      width: 5px;
+      border-radius: 999px;
+      background: #1db954;
+      box-shadow: 0 0 10px rgba(29,185,84,0.55);
+    }
+
+    .trikinella-eq span:nth-child(1) { height: 14px; }
+    .trikinella-eq span:nth-child(2) { height: 24px; }
+    .trikinella-eq span:nth-child(3) { height: 18px; }
+    .trikinella-eq span:nth-child(4) { height: 28px; }
+
+    .trikinella-reel-card {
+      display: flex;
+      flex-direction: column;
+      padding: clamp(22px, 2.5vw, 30px);
+    }
+
+    .trikinella-reel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .trikinella-reel-header h2 {
+      margin: 22px 0 8px;
+      color: #fff;
+      font-size: clamp(2rem, 3.4vw, 3rem);
+      letter-spacing: -0.055em;
+    }
+
+    .trikinella-reel-header p {
+      margin: 0;
+      color: rgba(255,255,255,0.66);
+      line-height: 1.5;
+    }
+
+    .trikinella-format-badge {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 50px;
+      min-height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.13);
+      color: rgba(255,255,255,0.70);
+      background: rgba(255,255,255,0.09);
+      font-weight: 900;
+    }
+
+    .trikinella-reel-frame {
+      position: relative;
+      width: min(275px, 100%);
+      aspect-ratio: 9 / 16;
+      margin: 10px auto 28px;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 10px solid rgba(255,255,255,0.12);
+      box-shadow: 0 22px 58px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.14);
+      background:
+        radial-gradient(circle at 50% 35%, rgba(255,255,255,0.14), transparent 18%),
+        linear-gradient(180deg, rgba(18,14,28,0.98), rgba(47,25,82,0.88));
+    }
+
+    .trikinella-reel-frame iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: transparent;
+    }
+
+    .trikinella-scroll-hint {
+      margin: clamp(26px, 5vw, 54px) 0 0;
+      text-align: center;
+      color: rgba(255,255,255,0.58);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 1040px) {
+      .trikinella-launch-grid,
+      .trikinella-release-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .trikinella-title {
+        font-size: clamp(3.2rem, 11vw, 5.4rem);
+      }
+
+      .trikinella-cover-wrap {
+        max-width: 390px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .trikinella-launch {
+        padding-top: 86px;
+      }
+
+      .trikinella-panel {
+        border-radius: 24px;
+      }
+
+      .trikinella-spotify-card,
+      .trikinella-reel-card {
+        padding: 18px;
+      }
+
+      .trikinella-mini-player {
+        grid-template-columns: 46px minmax(0,1fr);
+      }
+
+      .trikinella-eq {
+        display: none;
+      }
+    }
+  </style>
 </head>
 <body>
   <!--
@@ -71,64 +489,65 @@
 
     <section class="trikinella-launch" id="trikinella-coming-soon" aria-labelledby="trikinella-title">
       <div class="container">
-        <div class="trikinella-stage">
-          <article class="trikinella-main-card" aria-label="Coming Soon Spotify-style per Trikinella">
-            <div class="trikinella-main-top">
-              <p class="trikinella-pill"><span aria-hidden="true"></span> Spotify-style drop alert</p>
-            </div>
+        <div class="trikinella-launch-grid">
+          <article class="trikinella-panel trikinella-spotify-card" aria-label="Coming Soon Spotify-style per Trikinella">
+            <p class="trikinella-eyebrow"><span class="trikinella-dot" aria-hidden="true"></span> Spotify-style drop alert</p>
 
-            <div class="trikinella-main-grid">
-              <div class="trikinella-copy">
-                <p class="trikinella-kicker">Coming Soon</p>
+            <div class="trikinella-release-layout">
+              <div class="trikinella-cover-wrap">
+                <img src="assets/trikinella-cover.png" alt="Cover ufficiale del singolo Trikinella" loading="eager">
+              </div>
+
+              <div class="trikinella-release-copy">
+                <span class="trikinella-release-kicker">Coming Soon</span>
                 <h1 class="trikinella-title" id="trikinella-title">TRIKINELLA</h1>
-
                 <p class="trikinella-subtitle">
                   Nuovo singolo di Zerouan. Fuori il <strong>7 Luglio</strong> su Spotify, Apple Music e YouTube Music.
                 </p>
 
-                <div class="trikinella-chips" aria-label="Informazioni uscita Trikinella">
-                  <span>▣ 7 Luglio</span>
-                  <span>⌁ Alternative Rap</span>
-                  <span>◖ Trip Hop · Techno</span>
+                <div class="trikinella-date-row" aria-label="Informazioni uscita Trikinella">
+                  <span class="trikinella-chip">● 7 Luglio</span>
+                  <span class="trikinella-chip">Alternative Rap</span>
+                  <span class="trikinella-chip">Trip Hop · Techno</span>
+                </div>
+
+                <div class="trikinella-progress" aria-hidden="true">
+                  <div class="trikinella-progress-labels">
+                    <span>Loading release</span>
+                    <span>Coming soon</span>
+                  </div>
+                  <div class="trikinella-progress-track">
+                    <span class="trikinella-progress-fill"></span>
+                  </div>
+                </div>
+
+                <div class="trikinella-actions">
+                  <span class="trikinella-button locked" aria-disabled="true">▶ Disponibile dal 7 Luglio</span>
+                  <a class="trikinella-button primary" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+                    Segui su Spotify
+                  </a>
                 </div>
               </div>
-
-              <figure class="trikinella-cover-card">
-                <img src="assets/trikinella-cover.png" alt="Cover ufficiale del singolo Trikinella" loading="eager">
-              </figure>
-            </div>
-
-            <div class="trikinella-release-bar" aria-hidden="true">
-              <div>
-                <span>Loading release</span>
-                <span>Coming soon</span>
-              </div>
-              <i></i>
-            </div>
-
-            <div class="trikinella-actions">
-              <span class="trikinella-btn trikinella-btn-muted" aria-disabled="true">▶ Disponibile dal 7 Luglio</span>
-              <a class="trikinella-btn trikinella-btn-green" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
-                ● Segui su Spotify
-              </a>
             </div>
 
             <div class="trikinella-mini-player" aria-label="Mini player statico Trikinella">
-              <img src="assets/trikinella-cover.png" alt="Mini cover Trikinella" loading="lazy">
-              <div>
+              <img class="trikinella-mini-cover" src="assets/trikinella-cover.png" alt="Mini cover Trikinella" loading="lazy">
+              <span>
                 <strong>Trikinella</strong>
                 <small>Zerouan · single · release 07/07</small>
-              </div>
-              <div class="trikinella-eq" aria-hidden="true">
-                <span></span><span></span><span></span><span></span>
-              </div>
+              </span>
+              <span class="trikinella-eq" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
             </div>
           </article>
 
-          <aside class="trikinella-reel-card" aria-label="Player video Instagram Reel Trikinella">
-            <div class="trikinella-reel-heading">
-              <p>Reel Preview</p>
-              <span>Formato 1080×1920</span>
+          <aside class="trikinella-panel trikinella-reel-card" aria-label="Player video Instagram Reel Trikinella">
+            <div class="trikinella-reel-header">
+              <div>
+                <span class="trikinella-status"><span class="trikinella-dot" aria-hidden="true"></span> Reel Preview</span>
+                <h2>Guarda il teaser</h2>
+                <p>Player verticale in formato Reel 1080×1920, integrato direttamente dalla pagina Instagram.</p>
+              </div>
+              <span class="trikinella-format-badge">9:16</span>
             </div>
 
             <div class="trikinella-reel-frame">
@@ -139,14 +558,10 @@
                 allowfullscreen
                 loading="lazy">
               </iframe>
-
-              <a class="trikinella-reel-fallback" href="https://www.instagram.com/reel/DZ0Do48N2WL/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==" target="_blank" rel="noopener noreferrer">
-                ▶
-              </a>
             </div>
 
-            <a class="trikinella-reel-link" href="https://www.instagram.com/reel/DZ0Do48N2WL/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==" target="_blank" rel="noopener noreferrer">
-              ↗ Apri Reel su Instagram
+            <a class="trikinella-button" href="https://www.instagram.com/reel/DZ0Do48N2WL/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==" target="_blank" rel="noopener noreferrer">
+              Apri Reel su Instagram
             </a>
           </aside>
         </div>
@@ -451,7 +866,7 @@
       </div>
     </section>
 
-    <section class="sections contact-section" id="contacts">
+    <section class="sections" id="sections">
       <div class="container section-grid">
         <article class="section-card" id="web-radio">
           <div class="section-icon">📡</div>
@@ -473,11 +888,11 @@
           <p>Uno spazio futuro per commentare, discutere e realizzare insieme possibili progetti e collaborazioni.</p>
         </article>
 
-        <article class="section-card" id="merch" href="feedback.html">
+        <a class="section-card feedback-link-card" id="feedback" href="feedback.html" aria-label="Apri la pagina Feedback">
           <div class="section-icon">💬</div>
           <h3>Lascia un Feedback</h3>
           <p>Dimmi cosa ne pensi del progetto Zerouan (e magari anche della mia musica)</p>
-        </article>
+        </a>
       </div>
     </section>
   </main>
