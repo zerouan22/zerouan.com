@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Feedback permanente per ZEROUAN INC. — lascia un nome e un commento inciso nella tavoletta." />
+  <title>Feedback | ZEROUAN INC.</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    .feedback-page {
+      position: relative;
+      isolation: isolate;
+      min-height: calc(100vh - 78px);
+      padding: clamp(92px, 9vw, 132px) 0 clamp(76px, 8vw, 112px);
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 16% 14%, rgba(125, 103, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 84% 18%, rgba(29, 185, 84, 0.20), transparent 32%),
+        radial-gradient(circle at 50% 100%, rgba(145, 20, 52, 0.30), transparent 36%),
+        linear-gradient(135deg, #070810 0%, #0b1019 44%, #07120d 100%);
+    }
+
+    .feedback-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at center, black 18%, transparent 92%);
+    }
+
+    .feedback-page::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -22% -10%;
+      height: 46%;
+      z-index: -1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 38% 30%, rgba(145, 20, 52, 0.34), transparent 38%),
+        radial-gradient(circle at 66% 20%, rgba(29, 185, 84, 0.17), transparent 34%);
+      filter: blur(4px);
+    }
+
+    .feedback-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.82fr) minmax(360px, 1.18fr);
+      gap: clamp(24px, 4vw, 42px);
+      align-items: stretch;
+    }
+
+    .feedback-panel {
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 30px;
+      background:
+        linear-gradient(145deg, rgba(18,19,30,0.88), rgba(8,8,13,0.82));
+      box-shadow:
+        0 28px 88px rgba(0,0,0,0.46),
+        inset 0 1px 0 rgba(255,255,255,0.07);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .feedback-copy-card {
+      padding: clamp(28px, 4vw, 42px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 620px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feedback-copy-card::after {
+      content: "";
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      right: -170px;
+      bottom: -160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(29,185,84,0.17), transparent 68%);
+      pointer-events: none;
+    }
+
+    .feedback-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      width: fit-content;
+      margin-bottom: 26px;
+      padding: 8px 13px;
+      border: 1px solid rgba(29,185,84,0.33);
+      border-radius: 999px;
+      color: #d8ffe5;
+      background: rgba(29,185,84,0.11);
+      font-size: 0.76rem;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .feedback-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #1db954;
+      box-shadow: 0 0 16px rgba(29,185,84,0.78);
+    }
+
+    .feedback-copy-card h1 {
+      font-size: clamp(3.4rem, 7vw, 6.4rem);
+      line-height: 0.88;
+      letter-spacing: -0.08em;
+      margin: 0;
+    }
+
+    .feedback-copy-card h1 span {
+      display: block;
+      color: #1db954;
+    }
+
+    .feedback-intro {
+      margin-top: 28px;
+      color: rgba(255,255,255,0.76);
+      font-size: clamp(1rem, 1.4vw, 1.18rem);
+      line-height: 1.7;
+      max-width: 54ch;
+    }
+
+    .feedback-warning {
+      position: relative;
+      z-index: 1;
+      margin-top: 28px;
+      padding: 16px 18px;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 18px;
+      background: rgba(0,0,0,0.26);
+      color: rgba(255,255,255,0.68);
+      line-height: 1.55;
+      font-size: 0.92rem;
+    }
+
+    .feedback-form {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 16px;
+      margin-top: 34px;
+    }
+
+    .feedback-form label {
+      display: grid;
+      gap: 8px;
+      color: rgba(255,255,255,0.62);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 900;
+    }
+
+    .feedback-form input,
+    .feedback-form textarea {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.28);
+      color: var(--white, #f5f7f6);
+      padding: 15px 16px;
+      font: inherit;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .feedback-form textarea {
+      min-height: 132px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .feedback-form input:focus,
+    .feedback-form textarea:focus {
+      border-color: rgba(29,185,84,0.75);
+      box-shadow: 0 0 0 4px rgba(29,185,84,0.08);
+      background: rgba(0,0,0,0.36);
+    }
+
+    .feedback-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .feedback-button {
+      min-height: 50px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      padding: 0 20px;
+      color: #fff;
+      background: rgba(255,255,255,0.09);
+      font: inherit;
+      font-weight: 950;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .feedback-button:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.14);
+    }
+
+    .feedback-button.primary {
+      color: #07100a;
+      border-color: rgba(29,185,84,0.9);
+      background: #1db954;
+      box-shadow: 0 14px 34px rgba(29,185,84,0.23);
+    }
+
+    .feedback-tablet-card {
+      padding: clamp(24px, 3vw, 34px);
+      min-height: 620px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .feedback-tablet-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .feedback-tablet-header h2 {
+      margin: 0 0 8px;
+      color: #fff;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 0.96;
+      letter-spacing: -0.065em;
+      text-transform: uppercase;
+    }
+
+    .feedback-tablet-header p {
+      margin: 0;
+      color: rgba(255,255,255,0.62);
+      line-height: 1.55;
+    }
+
+    .feedback-counter {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      height: 38px;
+      border: 1px solid rgba(29,185,84,0.33);
+      border-radius: 999px;
+      color: #1db954;
+      background: rgba(29,185,84,0.09);
+      font-weight: 950;
+    }
+
+    .feedback-tablet-scroll {
+      flex: 1;
+      min-height: 470px;
+      max-height: 620px;
+      overflow-y: auto;
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(29,185,84,0.08), transparent 28%),
+        rgba(0,0,0,0.28);
+      scrollbar-color: rgba(29,185,84,0.72) rgba(255,255,255,0.08);
+      scrollbar-width: thin;
+    }
+
+    .feedback-tablet-scroll::-webkit-scrollbar {
+      width: 9px;
+    }
+
+    .feedback-tablet-scroll::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+    }
+
+    .feedback-tablet-scroll::-webkit-scrollbar-thumb {
+      background: rgba(29,185,84,0.72);
+      border-radius: 999px;
+    }
+
+    .feedback-comment {
+      padding: 17px 18px;
+      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .feedback-comment + .feedback-comment {
+      margin-top: 14px;
+    }
+
+    .feedback-comment-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+
+    .feedback-comment strong {
+      color: #fff;
+      font-size: 1rem;
+      overflow-wrap: anywhere;
+    }
+
+    .feedback-comment time {
+      flex: 0 0 auto;
+      color: rgba(255,255,255,0.44);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .feedback-comment p {
+      margin: 0;
+      color: rgba(255,255,255,0.76);
+      line-height: 1.62;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .feedback-empty {
+      display: grid;
+      place-items: center;
+      min-height: 300px;
+      color: rgba(255,255,255,0.48);
+      text-align: center;
+      line-height: 1.6;
+      border: 1px dashed rgba(255,255,255,0.12);
+      border-radius: 20px;
+    }
+
+    .feedback-note {
+      margin-top: 16px;
+      color: rgba(255,255,255,0.48);
+      line-height: 1.55;
+      font-size: 0.86rem;
+    }
+
+
+    .feedback-hp {
+      position: absolute !important;
+      left: -9999px !important;
+      width: 1px !important;
+      height: 1px !important;
+      overflow: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .feedback-warning[data-status="success"] {
+      border-color: rgba(29,185,84,0.34);
+      color: rgba(216,255,229,0.82);
+      background: rgba(29,185,84,0.09);
+    }
+
+    .feedback-warning[data-status="error"] {
+      border-color: rgba(255,84,120,0.38);
+      color: rgba(255,210,220,0.90);
+      background: rgba(145,20,52,0.14);
+    }
+
+    .feedback-warning[data-status="loading"] {
+      border-color: rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.72);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .feedback-button:disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @media (max-width: 1040px) {
+      .feedback-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feedback-copy-card,
+      .feedback-tablet-card {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .feedback-page {
+        padding-top: 70px;
+      }
+
+      .feedback-panel {
+        border-radius: 24px;
+      }
+
+      .feedback-copy-card,
+      .feedback-tablet-card {
+        padding: 20px;
+      }
+
+      .feedback-actions,
+      .feedback-button {
+        width: 100%;
+      }
+
+      .feedback-tablet-header {
+        flex-direction: column;
+      }
+
+      .feedback-tablet-scroll {
+        min-height: 420px;
+        max-height: 560px;
+        padding: 14px;
+      }
+
+      .feedback-comment-header {
+        flex-direction: column;
+        gap: 4px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container navbar">
+      <a class="brand" href="index.html#top" aria-label="Torna alla homepage">ZEROUAN <span>INC.</span></a>
+
+      <nav class="nav-links" aria-label="Navigazione principale">
+        <a href="index.html#trikinella-coming-soon">Trikinella</a>
+        <a href="index.html#musica">Musica</a>
+        <a href="index.html#connessioni">Connessioni</a>
+        <a href="index.html#sections">Progetti</a>
+        <a href="index.html#galleria">Gallery</a>
+      </nav>
+
+      <div class="header-actions" aria-label="Azioni principali">
+        <a class="nav-cta" href="index.html">← Homepage</a>
+      </div>
+
+      <div class="mobile-menu-label">Feedback</div>
+    </div>
+  </header>
+
+  <main class="feedback-page" id="top">
+    <div class="container">
+      <div class="feedback-grid">
+        <section class="feedback-panel feedback-copy-card" aria-labelledby="feedback-title">
+          <div>
+            <p class="feedback-kicker"><span class="feedback-dot" aria-hidden="true"></span> Tavoletta feedback</p>
+            <h1 id="feedback-title">Lascia un <span>segno.</span></h1>
+            <p class="feedback-intro">
+              Scrivi un nome e lascia un commento. Ogni messaggio viene datato automaticamente, salvato su Supabase e mostrato pubblicamente nella tavoletta.
+            </p>
+
+            <p class="feedback-warning" id="feedbackStatus">
+              Stato: connessione alla tavoletta in corso...
+            </p>
+          </div>
+
+          <form class="feedback-form" id="feedbackForm" autocomplete="on">
+            <label for="feedbackName">
+              Nome / nickname
+              <input id="feedbackName" name="feedbackName" maxlength="40" autocomplete="name" placeholder="Es. Zerouan listener" required />
+            </label>
+
+            <label for="feedbackMessage">
+              Commento
+              <textarea id="feedbackMessage" name="feedbackMessage" maxlength="800" placeholder="Scrivi qui il tuo feedback..." required></textarea>
+            </label>
+
+            <label class="feedback-hp" for="feedbackWebsite" aria-hidden="true">
+              Website
+              <input id="feedbackWebsite" name="website" tabindex="-1" autocomplete="off" />
+            </label>
+
+            <div class="feedback-actions">
+              <button class="feedback-button primary" id="submitFeedbackBtn" type="submit">Incidi commento</button>
+              <button class="feedback-button" type="button" id="reloadFeedbackBtn">Aggiorna tavoletta</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="feedback-panel feedback-tablet-card" aria-labelledby="tablet-title">
+          <div class="feedback-tablet-header">
+            <div>
+              <p class="feedback-kicker"><span class="feedback-dot" aria-hidden="true"></span> Commenti incisi</p>
+              <h2 id="tablet-title">Tavoletta</h2>
+              <p>Archivio pubblico, datato e scrollabile dei commenti lasciati sul sito.</p>
+            </div>
+            <span class="feedback-counter" id="feedbackCounter">0</span>
+          </div>
+
+          <div class="feedback-tablet-scroll" id="feedbackList" aria-live="polite">
+            <div class="feedback-empty">Caricamento commenti...</div>
+          </div>
+
+          <p class="feedback-note">
+            I commenti sono letti e scritti dalla tabella Supabase <strong>feedback_comments</strong>. La pagina non usa più salvataggio locale o modifica manuale del file HTML.
+          </p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>© 2026 ZEROUAN INC. Tutti i diritti riservati.</span>
+      <span>Feedback · Tavoletta · Community</span>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    (function () {
+      const SUPABASE_URL = "https://vxnlycbuacrielnhjqqi.supabase.co";
+      const SUPABASE_KEY = "sb_publishable_rwF9RZvjKHXtB1fjCTkzfw_x8xrwKQH";
+      const TABLE_NAME = "feedback_comments";
+
+      const form = document.getElementById("feedbackForm");
+      const nameInput = document.getElementById("feedbackName");
+      const messageInput = document.getElementById("feedbackMessage");
+      const honeypotInput = document.getElementById("feedbackWebsite");
+      const list = document.getElementById("feedbackList");
+      const counter = document.getElementById("feedbackCounter");
+      const statusBox = document.getElementById("feedbackStatus");
+      const submitBtn = document.getElementById("submitFeedbackBtn");
+      const reloadBtn = document.getElementById("reloadFeedbackBtn");
+
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      function setStatus(message, type) {
+        statusBox.textContent = message;
+        statusBox.dataset.status = type || "neutral";
+      }
+
+      function formatDate(isoDate) {
+        const date = isoDate ? new Date(isoDate) : new Date();
+        return new Intl.DateTimeFormat("it-IT", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(date);
+      }
+
+      function cleanText(value, maxLength) {
+        return String(value || "").trim().replace(/\s+$/g, "").slice(0, maxLength);
+      }
+
+      function createCommentNode(comment) {
+        const article = document.createElement("article");
+        article.className = "feedback-comment";
+
+        const header = document.createElement("div");
+        header.className = "feedback-comment-header";
+
+        const name = document.createElement("strong");
+        name.textContent = comment.name || "Anonimo";
+
+        const time = document.createElement("time");
+        time.dateTime = comment.created_at || "";
+        time.textContent = formatDate(comment.created_at);
+
+        const text = document.createElement("p");
+        text.textContent = comment.comment || "";
+
+        header.append(name, time);
+        article.append(header, text);
+        return article;
+      }
+
+      function renderComments(comments) {
+        list.innerHTML = "";
+        counter.textContent = String(comments.length);
+
+        if (!comments.length) {
+          const empty = document.createElement("div");
+          empty.className = "feedback-empty";
+          empty.innerHTML = "Nessun commento inciso per ora.<br>Il primo segno può essere il tuo.";
+          list.appendChild(empty);
+          return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        comments.forEach((comment) => fragment.appendChild(createCommentNode(comment)));
+        list.appendChild(fragment);
+      }
+
+      async function loadComments() {
+        setStatus("Stato: lettura della tavoletta pubblica in corso...", "loading");
+        reloadBtn.disabled = true;
+
+        const { data, error } = await client
+          .from(TABLE_NAME)
+          .select("id, name, comment, created_at")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        reloadBtn.disabled = false;
+
+        if (error) {
+          console.error(error);
+          renderComments([]);
+          setStatus("Errore: non riesco a leggere i commenti. Controlla che tabella e policy RLS siano attive su Supabase.", "error");
+          return;
+        }
+
+        renderComments(data || []);
+        setStatus("Stato: tavoletta connessa. I commenti pubblicati qui sono salvati su Supabase.", "success");
+      }
+
+      async function submitComment(event) {
+        event.preventDefault();
+
+        if (honeypotInput.value) return;
+
+        const name = cleanText(nameInput.value, 40);
+        const comment = cleanText(messageInput.value, 800);
+
+        if (!name || !comment) {
+          setStatus("Errore: nome e commento sono obbligatori.", "error");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Incisione...";
+        setStatus("Stato: sto incidendo il commento nella tavoletta...", "loading");
+
+        const { error } = await client
+          .from(TABLE_NAME)
+          .insert([{ name, comment }]);
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Incidi commento";
+
+        if (error) {
+          console.error(error);
+          setStatus("Errore: commento non salvato. Probabile problema di tabella, RLS o policy insert su Supabase.", "error");
+          return;
+        }
+
+        form.reset();
+        await loadComments();
+        list.scrollTop = 0;
+        setStatus("Commento inciso correttamente. Ora è pubblico nella tavoletta.", "success");
+      }
+
+      form.addEventListener("submit", submitComment);
+      reloadBtn.addEventListener("click", loadComments);
+      loadComments();
+    })();
+  </script>
+</body>
+</html>
