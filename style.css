@@ -2241,3 +2241,185 @@ h1 .accent {
     margin-bottom: 28px;
   }
 }
+
+/* ===== FIX TRIKINELLA HERO — titolo non tagliato + transizione sfondo più pulita ===== */
+
+body {
+  background:
+    radial-gradient(circle at 12% 7%, rgba(92, 74, 186, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(30, 215, 96, 0.13), transparent 30%),
+    radial-gradient(circle at 49% 46%, rgba(123, 16, 38, 0.18), transparent 34%),
+    radial-gradient(circle at 50% 96%, rgba(121, 14, 39, 0.24), transparent 34%),
+    linear-gradient(135deg, #0b1020 0%, #071414 45%, #08080d 100%);
+}
+
+body::before {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.82;
+  mask-image: radial-gradient(circle at center, black 12%, transparent 90%);
+}
+
+.trikinella-launch {
+  min-height: calc(100vh - 78px);
+  padding: clamp(76px, 6vw, 104px) 0 clamp(60px, 6.4vw, 96px);
+  background:
+    linear-gradient(180deg, rgba(8, 9, 18, 0.12) 0%, rgba(9, 10, 17, 0.34) 72%, rgba(10, 15, 22, 0.08) 100%);
+}
+
+.trikinella-launch::before {
+  inset: -22% -12% -28%;
+  background:
+    radial-gradient(circle at 14% 14%, rgba(93, 73, 183, 0.24), transparent 31%),
+    radial-gradient(circle at 86% 15%, rgba(30, 215, 96, 0.14), transparent 32%),
+    radial-gradient(circle at 53% 70%, rgba(123, 16, 72, 0.16), transparent 34%),
+    radial-gradient(circle at 50% 105%, rgba(121, 14, 39, 0.36), transparent 38%);
+  filter: none;
+}
+
+.trikinella-launch::after {
+  opacity: 0.72;
+  background:
+    linear-gradient(rgba(255,255,255,0.023) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.020) 1px, transparent 1px),
+    linear-gradient(180deg, transparent 0%, rgba(8, 11, 18, 0.20) 70%, rgba(8, 12, 18, 0.02) 100%);
+  background-size: 42px 42px, 42px 42px, auto;
+}
+
+.trikinella-stage {
+  grid-template-columns: minmax(0, 2.75fr) minmax(285px, 0.88fr);
+  gap: clamp(18px, 2vw, 24px);
+}
+
+.trikinella-main-card,
+.trikinella-reel-card {
+  background:
+    radial-gradient(circle at 74% 22%, rgba(183, 167, 255, 0.07), transparent 26%),
+    radial-gradient(circle at 88% 84%, rgba(30, 215, 96, 0.08), transparent 28%),
+    linear-gradient(145deg, rgba(18, 19, 30, 0.90), rgba(8, 8, 14, 0.82));
+}
+
+.trikinella-main-card {
+  padding: clamp(26px, 2.75vw, 34px);
+}
+
+.trikinella-main-card::after {
+  left: 36%;
+  top: 12%;
+  width: 36%;
+  opacity: 0.72;
+}
+
+.trikinella-main-grid {
+  grid-template-columns: minmax(0, 1.02fr) minmax(255px, 0.72fr);
+  gap: clamp(24px, 3vw, 42px);
+  margin-top: clamp(44px, 4.8vw, 62px);
+}
+
+.trikinella-copy {
+  min-width: 0;
+}
+
+.trikinella-title {
+  width: 100%;
+  max-width: 100%;
+  font-size: clamp(3.15rem, 4.15vw, 5.35rem);
+  line-height: 0.90;
+  letter-spacing: -0.078em;
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.trikinella-cover-card {
+  width: min(100%, 380px);
+  justify-self: end;
+}
+
+.trikinella-subtitle {
+  max-width: 520px;
+}
+
+.trikinella-release-bar {
+  margin-top: clamp(34px, 4vw, 48px);
+}
+
+.trikinella-reel-card {
+  align-self: stretch;
+}
+
+.trikinella-reel-frame {
+  width: min(100%, 292px);
+}
+
+.trikinella-scroll-hint {
+  margin-top: 30px;
+  color: rgba(247, 247, 251, 0.58);
+}
+
+.hero {
+  border-top: 0;
+  margin-top: -1px;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(183, 167, 255, 0.09), transparent 24%),
+    radial-gradient(circle at 82% 8%, rgba(30, 215, 96, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(10, 15, 22, 0.02) 0%, rgba(8, 12, 18, 0.24) 100%);
+}
+
+@media (max-width: 1280px) {
+  .trikinella-title {
+    font-size: clamp(3rem, 3.75vw, 4.85rem);
+  }
+
+  .trikinella-cover-card {
+    width: min(100%, 350px);
+  }
+}
+
+@media (max-width: 1120px) {
+  .trikinella-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .trikinella-main-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(255px, 0.62fr);
+  }
+
+  .trikinella-title {
+    font-size: clamp(3.2rem, 8.2vw, 5.8rem);
+  }
+
+  .trikinella-reel-card {
+    max-width: 520px;
+  }
+}
+
+@media (max-width: 840px) {
+  .trikinella-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trikinella-cover-card {
+    width: min(100%, 410px);
+    justify-self: start;
+  }
+
+  .trikinella-title {
+    white-space: normal;
+    font-size: clamp(3.05rem, 14.5vw, 5.3rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .trikinella-title {
+    white-space: normal;
+    font-size: clamp(2.95rem, 14vw, 4.6rem);
+    letter-spacing: -0.065em;
+  }
+
+  .trikinella-launch {
+    padding-top: 54px;
+    padding-bottom: 58px;
+  }
+}
