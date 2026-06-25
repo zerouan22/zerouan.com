@@ -30,6 +30,7 @@
       <a class="brand" href="#top" aria-label="Vai alla homepage">ZEROUAN <span>INC.</span></a>
 
       <nav class="nav-links" aria-label="Navigazione principale">
+        <a href="#trikinella-coming-soon">Trikinella</a>
         <a href="#musica">Musica</a>
         <a href="#connessioni">Connessioni</a>
         <a href="#sections">Progetti</a>
@@ -67,6 +68,93 @@
   </header>
 
   <main id="top">
+
+    <section class="trikinella-launch" id="trikinella-coming-soon" aria-labelledby="trikinella-title">
+      <div class="container">
+        <div class="trikinella-stage">
+          <article class="trikinella-main-card" aria-label="Coming Soon Spotify-style per Trikinella">
+            <div class="trikinella-main-top">
+              <p class="trikinella-pill"><span aria-hidden="true"></span> Spotify-style drop alert</p>
+            </div>
+
+            <div class="trikinella-main-grid">
+              <div class="trikinella-copy">
+                <p class="trikinella-kicker">Coming Soon</p>
+                <h1 class="trikinella-title" id="trikinella-title">TRIKINELLA</h1>
+
+                <p class="trikinella-subtitle">
+                  Nuovo singolo di Zerouan. Fuori il <strong>7 Luglio</strong> su Spotify, Apple Music e YouTube Music.
+                </p>
+
+                <div class="trikinella-chips" aria-label="Informazioni uscita Trikinella">
+                  <span>▣ 7 Luglio</span>
+                  <span>⌁ Alternative Rap</span>
+                  <span>◖ Trip Hop · Techno</span>
+                </div>
+              </div>
+
+              <figure class="trikinella-cover-card">
+                <img src="assets/trikinella-cover.png" alt="Cover ufficiale del singolo Trikinella" loading="eager">
+              </figure>
+            </div>
+
+            <div class="trikinella-release-bar" aria-hidden="true">
+              <div>
+                <span>Loading release</span>
+                <span>Coming soon</span>
+              </div>
+              <i></i>
+            </div>
+
+            <div class="trikinella-actions">
+              <span class="trikinella-btn trikinella-btn-muted" aria-disabled="true">▶ Disponibile dal 7 Luglio</span>
+              <a class="trikinella-btn trikinella-btn-green" href="https://open.spotify.com/intl-it/artist/69viLass4Hx655goSGnoE2?si=1Jgr2YUBRT6Ba-IiNvjJiw" target="_blank" rel="noopener noreferrer">
+                ● Segui su Spotify
+              </a>
+            </div>
+
+            <div class="trikinella-mini-player" aria-label="Mini player statico Trikinella">
+              <img src="assets/trikinella-cover.png" alt="Mini cover Trikinella" loading="lazy">
+              <div>
+                <strong>Trikinella</strong>
+                <small>Zerouan · single · release 07/07</small>
+              </div>
+              <div class="trikinella-eq" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+          </article>
+
+          <aside class="trikinella-reel-card" aria-label="Player video Instagram Reel Trikinella">
+            <div class="trikinella-reel-heading">
+              <p>Reel Preview</p>
+              <span>Formato 1080×1920</span>
+            </div>
+
+            <div class="trikinella-reel-frame">
+              <iframe
+                src="https://www.instagram.com/reel/DZ0Do48N2WL/embed/"
+                title="Instagram Reel — Trikinella teaser"
+                allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                allowfullscreen
+                loading="lazy">
+              </iframe>
+
+              <a class="trikinella-reel-fallback" href="https://www.instagram.com/reel/DZ0Do48N2WL/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==" target="_blank" rel="noopener noreferrer">
+                ▶
+              </a>
+            </div>
+
+            <a class="trikinella-reel-link" href="https://www.instagram.com/reel/DZ0Do48N2WL/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==" target="_blank" rel="noopener noreferrer">
+              ↗ Apri Reel su Instagram
+            </a>
+          </aside>
+        </div>
+
+        <p class="trikinella-scroll-hint">Scrolla per entrare nella homepage Zerouan ↓</p>
+      </div>
+    </section>
+
     <section class="hero">
       <div class="container">
         <div class="hero-grid">
@@ -274,18 +362,23 @@
             <div class="project-icon">📡</div>
             <div>
               <span class="release-kicker">Progetto principale</span>
-              <h3>Segnale 01 - World</h3>
-              <p>Una community per la condivisione di ogni forma d'arte personale.
-              So che anche tu ti diletti in qualcosa!</p>
+              <h3>Segnale 01</h3>
+              <p>Una selezione musicale sempre accessibile: brani del giorno e Sound Cards degli artisti relativi.</p>
             </div>
-            <a class="ghost-button">In Project</a>
+            <a class="ghost-button" href="segnale01.html">In sviluppo</a>
           </article>
 
           <div class="project-side-grid">
             <article class="project-card" id="podcast">
               <div class="project-icon small">🎙️</div>
-              <h3>Segnale 01 - Deep <span class="soon">Project</span></h3>
-              <p>Conversazioni, storie, riflessioni e altri contenuti.</p>
+              <h3>Segnale 01 - Podcast <span class="soon">Project</span></h3>
+              <p>Conversazioni, storie, riflessioni e contenuti legati al progetto Zerouan.</p>
+            </article>
+
+            <article class="project-card" id="community">
+              <div class="project-icon small">🧪</div>
+              <h3>Research Unit<span class="soon">Project</span></h3>
+              <p>Uno spazio futuro per commentare, discutere, proporre e realizzare insieme possibili progetti e collaborazioni.</p>
             </article>
 
             <article class="project-card" id="merch">
@@ -358,7 +451,7 @@
       </div>
     </section>
 
-    <section class="sections" id="sections">
+    <section class="sections contact-section" id="contacts">
       <div class="container section-grid">
         <article class="section-card" id="web-radio">
           <div class="section-icon">📡</div>
@@ -371,8 +464,23 @@
         <article class="section-card" id="podcast">
           <div class="section-icon">🎙️</div>
           <h3>Segnale 01<span class="soon">Project</span></h3>
-          <p>Conversazioni, storie, riflessioni e altri contenuti</p>
+          <p>Conversazioni, storie, riflessioni e contenuti legati al progetto Zerouan.</p>
         </article>
+
+        <article class="section-card" id="community">
+          <div class="section-icon">🧪</div>
+          <h3>Research Unit <span class="soon">Project</span></h3>
+          <p>Uno spazio futuro per commentare, discutere e realizzare insieme possibili progetti e collaborazioni.</p>
+        </article>
+
+        <article class="section-card" id="merch">
+          <div class="section-icon">💬</div>
+          <h3>Lascia un Feedback</h3>
+          <p>Dimmi cosa ne pensi del progetto Zerouan (e magari anche della mia musica)</p>
+        </article>
+      </div>
+    </section>
+  </main>
 
   <footer>
     <div class="container footer-inner">
