@@ -2423,3 +2423,27 @@ body::before {
     padding-bottom: 58px;
   }
 }
+
+/* === INDEX UPDATE 2026-06-25: background coerente Trikinella e nuova card Forum === */
+body {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(165, 151, 255, 0.22), transparent 32%),
+    radial-gradient(circle at 84% 14%, rgba(130, 202, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 50% 95%, rgba(161, 20, 48, 0.30), transparent 36%),
+    linear-gradient(135deg, #050508 0%, #10101a 42%, #08080d 100%);
+  background-attachment: fixed;
+}
+
+.hero,
+.music-showcase,
+.connection-section,
+.project-section,
+.gallery-section,
+.sections {
+  background: transparent !important;
+}
+
+.connection-card.forum {
+  background: linear-gradient(145deg, rgba(183,167,255,0.16), rgba(30,215,96,0.055));
+  border-color: rgba(183,167,255,0.22);
+}

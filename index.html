@@ -424,6 +424,109 @@
         display: none;
       }
     }
+
+    /* === Aggiornamento richiesto: sfondo globale Trikinella + proporzioni più simmetriche === */
+    body {
+      background:
+        radial-gradient(circle at 15% 20%, rgba(165, 151, 255, 0.22), transparent 32%),
+        radial-gradient(circle at 84% 14%, rgba(130, 202, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 50% 95%, rgba(161, 20, 48, 0.30), transparent 36%),
+        linear-gradient(135deg, #050508 0%, #10101a 42%, #08080d 100%);
+      background-attachment: fixed;
+    }
+
+    body::before {
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 42px 42px;
+      opacity: 0.82;
+      mask-image: radial-gradient(circle at center, black 12%, transparent 90%);
+    }
+
+    body::after {
+      background:
+        radial-gradient(circle at 55% 20%, rgba(183, 167, 255, 0.08), transparent 31%),
+        linear-gradient(120deg, transparent 0%, rgba(30, 215, 96, 0.035) 42%, transparent 72%);
+    }
+
+    .hero,
+    .music-showcase,
+    .connection-section,
+    .project-section,
+    .gallery-section,
+    .sections {
+      background: transparent !important;
+    }
+
+    .trikinella-launch {
+      background: transparent;
+      min-height: calc(100vh - 78px);
+      display: grid;
+      align-items: center;
+      padding: clamp(84px, 7vw, 116px) 0 clamp(60px, 6vw, 88px);
+    }
+
+    .trikinella-launch-grid {
+      grid-template-columns: minmax(0, 1.34fr) minmax(340px, 0.86fr);
+      gap: clamp(24px, 3vw, 36px);
+      align-items: stretch;
+    }
+
+    .trikinella-spotify-card,
+    .trikinella-reel-card {
+      min-height: 560px;
+    }
+
+    .trikinella-spotify-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .trikinella-release-layout {
+      grid-template-columns: clamp(225px, 24vw, 300px) minmax(0, 1fr);
+      gap: clamp(24px, 3vw, 34px);
+      align-items: center;
+    }
+
+    .trikinella-cover-wrap {
+      max-width: 300px;
+      justify-self: center;
+      transform: none;
+    }
+
+    .trikinella-title {
+      font-size: clamp(3rem, 4.8vw, 4.35rem);
+      letter-spacing: -0.062em;
+    }
+
+    .trikinella-reel-card {
+      justify-content: space-between;
+    }
+
+    .trikinella-reel-frame {
+      width: min(265px, 92%);
+      margin: 16px auto 28px;
+    }
+
+    .connection-card.forum {
+      background: linear-gradient(145deg, rgba(183,167,255,0.16), rgba(30,215,96,0.055));
+      border-color: rgba(183,167,255,0.22);
+    }
+
+    @media (max-width: 1040px) {
+      .trikinella-launch-grid,
+      .trikinella-release-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .trikinella-spotify-card,
+      .trikinella-reel-card {
+        min-height: auto;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -448,9 +551,10 @@
       <a class="brand" href="#top" aria-label="Vai alla homepage">ZEROUAN <span>INC.</span></a>
 
       <nav class="nav-links" aria-label="Navigazione principale">
-        <a href="feedback.html">Feedback</a>
+        <a href="#trikinella-coming-soon">Feedback</a>
         <a href="#musica">Musica</a>
         <a href="#connessioni">Connessioni</a>
+        <a href="forum.html">INC. Forum</a>
         <a href="#sections">Progetti</a>
         <a href="#galleria">Gallery</a>
       </nav>
@@ -502,7 +606,7 @@
                 <span class="trikinella-release-kicker">Coming Soon</span>
                 <h1 class="trikinella-title" id="trikinella-title">TRIKINELLA</h1>
                 <p class="trikinella-subtitle">
-                  Nuovo singolo estratto dal prossimo album di Zerouan. Fuori il <strong>7 Luglio</strong> su Spotify, Apple Music e YouTube Music.
+                  Nuovo singolo di Zerouan. Fuori il <strong>7 Luglio</strong> su Spotify, Apple Music e YouTube Music.
                 </p>
 
                 <div class="trikinella-date-row" aria-label="Informazioni uscita Trikinella">
@@ -531,7 +635,7 @@
             </div>
 
             <div class="trikinella-mini-player" aria-label="Mini player statico Trikinella">
-              <img class="trikinella-mini-cover" src="assets/trikinella-cover.png" alt="Mini cover Trikinella" loading="eager">
+              <img class="trikinella-mini-cover" src="assets/trikinella-cover.png" alt="Mini cover Trikinella" loading="lazy">
               <span>
                 <strong>Trikinella</strong>
                 <small>Zerouan · single · release 07/07</small>
@@ -760,6 +864,12 @@
             <strong>TikTok</strong>
             <small>Clip e momenti rapidi</small>
           </a>
+
+          <a class="connection-card forum" href="forum.html" aria-label="Apri INC. Forum">
+            <span class="connection-icon">✦</span>
+            <strong>INC. Forum</strong>
+            <small>Discussioni, commenti e spazio community del progetto.</small>
+          </a>
         </div>
       </div>
     </section>
@@ -773,23 +883,17 @@
         </div>
 
         <div class="project-layout">
-          <article class="project-main-card" id="web-radio">
-            <div class="project-icon">📡</div>
+          <article class="project-main-card" id="podcast">
+            <div class="project-icon">🎙️</div>
             <div>
               <span class="release-kicker">Progetto principale</span>
-              <h3>Segnale 01</h3>
-              <p>Una selezione musicale sempre accessibile: brani del giorno e Sound Cards degli artisti relativi.</p>
+              <h3>Segnale 01 - Podcast</h3>
+              <p>Conversazioni, storie, riflessioni e contenuti legati al progetto Zerouan.</p>
             </div>
-            <a class="ghost-button" href="segnale01.html">In sviluppo</a>
+            <a class="ghost-button" href="segnale01-podcast.html">In sviluppo</a>
           </article>
 
           <div class="project-side-grid">
-            <article class="project-card" id="podcast">
-              <div class="project-icon small">🎙️</div>
-              <h3>Segnale 01 - Podcast <span class="soon">Project</span></h3>
-              <p>Conversazioni, storie, riflessioni e contenuti legati al progetto Zerouan.</p>
-            </article>
-
             <article class="project-card" id="community">
               <div class="project-icon small">🧪</div>
               <h3>Research Unit<span class="soon">Project</span></h3>

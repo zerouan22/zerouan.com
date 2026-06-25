@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zerouan Forum</title>
+  <meta name="description" content="Forum ufficiale Zerouan: discussioni, guide, blog, risorse e community." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="forum.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="site-bg"></div>
+
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Vai alla homepage Zerouan">
+      <span class="brand-mark">Z</span>
+      <span class="brand-text">ZEROUAN</span>
+    </a>
+
+    <nav class="main-nav" aria-label="Navigazione principale">
+      <a class="active" href="forum.html">Forum</a>
+      <a href="guide.html">Guide</a>
+      <a href="blog.html">Blog</a>
+      <a href="risorse.html">Risorse</a>
+      <a href="shop.html">Shop</a>
+      <a href="chi-siamo.html">Chi siamo</a>
+    </nav>
+
+    <div class="top-actions">
+      <label class="search-box" aria-label="Cerca nel forum">
+        <input id="searchInput" type="search" placeholder="Cerca nel forum..." autocomplete="off" />
+        <span>⌕</span>
+      </label>
+      <button id="openAuthBtn" class="icon-btn" type="button" title="Accedi">👤</button>
+      <button id="logoutBtn" class="icon-btn hidden" type="button" title="Esci">↪</button>
+      <div id="userBadge" class="user-badge">Ospite</div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="left-rail">
+      <button id="newThreadBtn" class="primary-btn full" type="button">＋ Nuova Discussione</button>
+
+      <section class="panel">
+        <h2>Categorie</h2>
+        <div id="categoryList" class="category-list" aria-live="polite"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Online ora</h2>
+        <div class="avatar-stack" aria-hidden="true">
+          <span>🧑‍🎤</span><span>🧑‍💻</span><span>🧑‍🔬</span><span>🧑‍🎨</span><strong>+23</strong>
+        </div>
+        <p class="muted small">Community Zerouan attiva</p>
+      </section>
+
+      <section class="panel">
+        <h2>Statistiche</h2>
+        <div class="stat-line"><span>Utenti</span><strong id="usersCount">—</strong></div>
+        <div class="stat-line"><span>Discussioni</span><strong id="threadsCount">—</strong></div>
+        <div class="stat-line"><span>Messaggi</span><strong id="postsCount">—</strong></div>
+      </section>
+    </aside>
+
+    <section class="content">
+      <div class="hero-card">
+        <div class="hero-title-row">
+          <div class="category-icon">💬</div>
+          <div>
+            <p class="eyebrow" id="currentSection">Forum</p>
+            <h1 id="pageTitle">Generale</h1>
+            <p class="muted" id="pageSubtitle">Discussioni generiche su Zerouan, musica, web, community e idee.</p>
+          </div>
+        </div>
+        <div class="hero-metrics">
+          <div><strong id="heroThreads">—</strong><span>Discussioni</span></div>
+          <div><strong id="heroPosts">—</strong><span>Messaggi</span></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-sort="recent" type="button">Più recenti</button>
+        <button class="tab" data-sort="popular" type="button">Più popolari</button>
+        <button class="tab" data-sort="discussed" type="button">Più discussi</button>
+      </div>
+
+      <section class="thread-list panel wide">
+        <div id="threadList" aria-live="polite"></div>
+        <div id="emptyThreads" class="empty hidden">
+          <h3>Nessuna discussione trovata</h3>
+          <p>Apri tu la prima discussione in questa categoria.</p>
+        </div>
+      </section>
+
+      <section id="threadView" class="thread-view panel wide hidden" aria-live="polite">
+        <div class="breadcrumb"><button id="backToListBtn" type="button">Forum</button><span>›</span><span id="breadcrumbCategory">Generale</span></div>
+        <article class="thread-main">
+          <div class="thread-head">
+            <div>
+              <h2 id="threadTitle">Titolo discussione</h2>
+              <p id="threadMeta" class="muted small">—</p>
+            </div>
+            <button id="replyJumpBtn" class="secondary-btn" type="button">↩ Rispondi</button>
+          </div>
+          <p id="threadBody" class="thread-body"></p>
+        </article>
+
+        <div class="reply-count"><strong id="replyCount">0</strong> Risposte</div>
+        <div id="postsList" class="posts-list"></div>
+
+        <form id="replyForm" class="reply-form">
+          <textarea id="replyBody" rows="4" maxlength="4000" placeholder="Scrivi la tua risposta..." required></textarea>
+          <button class="primary-btn" type="submit">Invia</button>
+        </form>
+      </section>
+    </section>
+
+    <aside class="right-rail">
+      <section class="panel user-month">
+        <h2>🏆 Utente del mese</h2>
+        <div class="spotlight-avatar">Z</div>
+        <h3>Trikinella</h3>
+        <p class="muted small">Founder · 1.248 punti</p>
+      </section>
+
+      <section class="panel">
+        <h2>Discussioni popolari</h2>
+        <ol id="popularList" class="popular-list"></ol>
+      </section>
+
+      <section class="panel">
+        <h2>Tag popolari</h2>
+        <div class="tags">
+          <span>#zerouan</span><span>#webdev</span><span>#supabase</span><span>#musica</span><span>#forum</span><span>#design</span>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="authDialog" class="modal">
+    <form method="dialog" class="modal-card" id="authForm">
+      <button class="close-btn" type="button" id="closeAuthBtn">×</button>
+      <h2>Accesso Forum</h2>
+      <p class="muted">Accedi o registrati tramite email. La password deve avere almeno 6 caratteri.</p>
+      <label>Email<input id="authEmail" type="email" placeholder="nome@email.com" required /></label>
+      <label>Password<input id="authPassword" type="password" placeholder="••••••••" minlength="6" required /></label>
+      <label>Nome pubblico<input id="displayName" type="text" maxlength="32" placeholder="Es. Zerouan" /></label>
+      <div class="modal-actions">
+        <button class="secondary-btn" id="loginBtn" type="button">Accedi</button>
+        <button class="primary-btn" id="signupBtn" type="button">Registrati</button>
+      </div>
+      <p id="authMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <dialog id="threadDialog" class="modal">
+    <form class="modal-card" id="threadForm">
+      <button class="close-btn" type="button" id="closeThreadBtn">×</button>
+      <h2>Nuova discussione</h2>
+      <label>Titolo<input id="newTitle" type="text" maxlength="120" placeholder="Titolo chiaro e specifico" required /></label>
+      <label>Categoria<select id="newCategory" required></select></label>
+      <label>Testo<textarea id="newBody" rows="8" maxlength="6000" placeholder="Scrivi il contenuto della discussione..." required></textarea></label>
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelThreadBtn">Annulla</button>
+        <button class="primary-btn" type="submit">Pubblica</button>
+      </div>
+      <p id="threadMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <footer class="footer">
+    <span>© 2026 Zerouan.com</span>
+    <a href="regolamento.html">Regolamento</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="contatti.html">Contatti</a>
+  </footer>
+
+  <script src="forum.js"></script>
+</body>
+</html>
