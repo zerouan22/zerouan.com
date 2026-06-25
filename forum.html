@@ -3,38 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Zerouan Forum</title>
-  <meta name="description" content="Forum ufficiale Zerouan: discussioni, guide, blog, risorse e community." />
+  <title>INC. Forum</title>
+  <meta name="description" content="INC. Forum: community musicale, discussioni, post multimediali, profili artista e social network Zerouan INC." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="forum.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body data-theme="dark">
   <div class="site-bg"></div>
 
   <header class="topbar">
-    <a class="brand" href="index.html" aria-label="Vai alla homepage Zerouan">
+    <a class="brand" href="index.html" aria-label="Vai alla homepage Zerouan INC.">
       <span class="brand-mark">Z</span>
-      <span class="brand-text">ZEROUAN</span>
+      <span class="brand-text">INC. Forum</span>
     </a>
 
     <nav class="main-nav" aria-label="Navigazione principale">
       <a class="active" href="forum.html">Forum</a>
-      <a href="guide.html">Guide</a>
+      <!--<a href="guide.html">Guide</a>
       <a href="blog.html">Blog</a>
       <a href="risorse.html">Risorse</a>
-      <a href="shop.html">Shop</a>
-      <a href="chi-siamo.html">Chi siamo</a>
+      <a href="shop.html">Shop</a>-->
+      <a href="index.html">Chi siamo</a>
     </nav>
 
     <div class="top-actions">
-      <label class="search-box" aria-label="Cerca nel forum">
+      <label class="search-box" aria-label="Cerca in INC. Forum">
         <input id="searchInput" type="search" placeholder="Cerca nel forum..." autocomplete="off" />
         <span>⌕</span>
       </label>
+      <button id="themeBtn" class="icon-btn" type="button" title="Cambia tema">◐</button>
       <button id="openAuthBtn" class="icon-btn" type="button" title="Accedi">👤</button>
+      <button id="openProfileBtn" class="profile-chip hidden" type="button" title="Profilo"></button>
       <button id="logoutBtn" class="icon-btn hidden" type="button" title="Esci">↪</button>
       <div id="userBadge" class="user-badge">Ospite</div>
     </div>
@@ -51,28 +53,27 @@
 
       <section class="panel">
         <h2>Online ora</h2>
-        <div class="avatar-stack" aria-hidden="true">
-          <span>🧑‍🎤</span><span>🧑‍💻</span><span>🧑‍🔬</span><span>🧑‍🎨</span><strong>+23</strong>
-        </div>
-        <p class="muted small">Community Zerouan attiva</p>
+        <div id="onlineStack" class="avatar-stack" aria-live="polite"></div>
+        <p class="muted small"><strong id="onlineCount">0</strong> utenti attivi negli ultimi 15 minuti</p>
       </section>
 
       <section class="panel">
-        <h2>Statistiche</h2>
+        <h2>Statistiche live</h2>
         <div class="stat-line"><span>Utenti</span><strong id="usersCount">—</strong></div>
         <div class="stat-line"><span>Discussioni</span><strong id="threadsCount">—</strong></div>
         <div class="stat-line"><span>Messaggi</span><strong id="postsCount">—</strong></div>
+        <div class="stat-line"><span>Media</span><strong id="mediaCount">—</strong></div>
       </section>
     </aside>
 
     <section class="content">
       <div class="hero-card">
         <div class="hero-title-row">
-          <div class="category-icon">💬</div>
+          <div class="category-icon">🎛️</div>
           <div>
-            <p class="eyebrow" id="currentSection">Forum</p>
+            <p class="eyebrow" id="currentSection">INC. Forum</p>
             <h1 id="pageTitle">Generale</h1>
-            <p class="muted" id="pageSubtitle">Discussioni generiche su Zerouan, musica, web, community e idee.</p>
+            <p class="muted" id="pageSubtitle">Community musicale, idee, feedback, produzioni, video, link e discussioni.</p>
           </div>
         </div>
         <div class="hero-metrics">
@@ -81,10 +82,24 @@
         </div>
       </div>
 
+      <div class="composer-card panel wide">
+        <div class="composer-head">
+          <div id="composerAvatar" class="mini-avatar">?</div>
+          <button id="quickPostBtn" class="composer-fake" type="button">Cosa vuoi condividere nella community musicale?</button>
+        </div>
+        <div class="composer-actions">
+          <button type="button" id="quickPhotoBtn">📷 Foto</button>
+          <button type="button" id="quickVideoBtn">▶️ Video</button>
+          <button type="button" id="quickLinkBtn">🔗 Link</button>
+          <button type="button" id="quickMusicBtn">🎵 Brano / progetto</button>
+        </div>
+      </div>
+
       <div class="tabs">
         <button class="tab active" data-sort="recent" type="button">Più recenti</button>
         <button class="tab" data-sort="popular" type="button">Più popolari</button>
         <button class="tab" data-sort="discussed" type="button">Più discussi</button>
+        <button class="tab" data-sort="media" type="button">Con media</button>
       </div>
 
       <section class="thread-list panel wide">
@@ -96,7 +111,7 @@
       </section>
 
       <section id="threadView" class="thread-view panel wide hidden" aria-live="polite">
-        <div class="breadcrumb"><button id="backToListBtn" type="button">Forum</button><span>›</span><span id="breadcrumbCategory">Generale</span></div>
+        <div class="breadcrumb"><button id="backToListBtn" type="button">INC. Forum</button><span>›</span><span id="breadcrumbCategory">Generale</span></div>
         <article class="thread-main">
           <div class="thread-head">
             <div>
@@ -105,15 +120,21 @@
             </div>
             <button id="replyJumpBtn" class="secondary-btn" type="button">↩ Rispondi</button>
           </div>
-          <p id="threadBody" class="thread-body"></p>
+          <div id="threadBody" class="thread-body"></div>
+          <div id="threadMedia" class="media-grid"></div>
         </article>
 
         <div class="reply-count"><strong id="replyCount">0</strong> Risposte</div>
         <div id="postsList" class="posts-list"></div>
 
-        <form id="replyForm" class="reply-form">
-          <textarea id="replyBody" rows="4" maxlength="4000" placeholder="Scrivi la tua risposta..." required></textarea>
-          <button class="primary-btn" type="submit">Invia</button>
+        <form id="replyForm" class="reply-form composer-real">
+          <textarea id="replyBody" rows="4" maxlength="4000" placeholder="Scrivi una risposta... puoi aggiungere foto, link o video." required></textarea>
+          <div id="replyMediaPreview" class="media-preview"></div>
+          <div class="composer-tools">
+            <label class="tool-btn">📷 Foto<input id="replyFiles" type="file" accept="image/*" multiple hidden></label>
+            <button id="replyAddLinkBtn" class="tool-btn" type="button">🔗 Link / Video</button>
+            <button class="primary-btn" type="submit">Invia</button>
+          </div>
         </form>
       </section>
     </section>
@@ -121,9 +142,14 @@
     <aside class="right-rail">
       <section class="panel user-month">
         <h2>🏆 Utente del mese</h2>
-        <div class="spotlight-avatar">Z</div>
-        <h3>Trikinella</h3>
-        <p class="muted small">Founder · 1.248 punti</p>
+        <div id="monthUserAvatar" class="spotlight-avatar">—</div>
+        <h3 id="monthUserName">Ancora nessun dato</h3>
+        <p id="monthUserMeta" class="muted small">Si aggiorna dai dati reali del mese.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Utenti attivi</h2>
+        <div id="activeUsersList" class="active-users"></div>
       </section>
 
       <section class="panel">
@@ -133,9 +159,7 @@
 
       <section class="panel">
         <h2>Tag popolari</h2>
-        <div class="tags">
-          <span>#zerouan</span><span>#webdev</span><span>#supabase</span><span>#musica</span><span>#forum</span><span>#design</span>
-        </div>
+        <div id="tagList" class="tags"></div>
       </section>
     </aside>
   </main>
@@ -143,8 +167,8 @@
   <dialog id="authDialog" class="modal">
     <form method="dialog" class="modal-card" id="authForm">
       <button class="close-btn" type="button" id="closeAuthBtn">×</button>
-      <h2>Accesso Forum</h2>
-      <p class="muted">Accedi o registrati tramite email. La password deve avere almeno 6 caratteri.</p>
+      <h2>Accesso INC. Forum</h2>
+      <p class="muted">Accedi o registrati. Il profilo potrà avere avatar, bio, tema personale e link social.</p>
       <label>Email<input id="authEmail" type="email" placeholder="nome@email.com" required /></label>
       <label>Password<input id="authPassword" type="password" placeholder="••••••••" minlength="6" required /></label>
       <label>Nome pubblico<input id="displayName" type="text" maxlength="32" placeholder="Es. Zerouan" /></label>
@@ -156,13 +180,53 @@
     </form>
   </dialog>
 
+  <dialog id="profileDialog" class="modal">
+    <form class="modal-card profile-modal" id="profileForm">
+      <button class="close-btn" type="button" id="closeProfileBtn">×</button>
+      <h2>Personalizza profilo</h2>
+      <div class="profile-editor-grid">
+        <div>
+          <div id="profilePreviewAvatar" class="big-avatar">?</div>
+          <label class="upload-avatar">Cambia foto profilo<input id="avatarFile" type="file" accept="image/*" hidden></label>
+        </div>
+        <div class="stacked-fields">
+          <label>Nome pubblico<input id="profileDisplayName" type="text" maxlength="32" required></label>
+          <label>Username<input id="profileUsername" type="text" maxlength="28" placeholder="zerouan"></label>
+          <label>Bio<textarea id="profileBio" rows="4" maxlength="240" placeholder="Chi sei, cosa fai, che musica produci..."></textarea></label>
+          <label>Tema profilo<select id="profileTheme"><option value="dark">Dark purple</option><option value="cyber">Cyber cyan</option><option value="crimson">Crimson</option><option value="light">Light</option></select></label>
+        </div>
+      </div>
+      <h3>Link social / musicali</h3>
+      <div class="links-grid">
+        <label>Instagram<input id="linkInstagram" type="url" placeholder="https://instagram.com/..." /></label>
+        <label>YouTube<input id="linkYoutube" type="url" placeholder="https://youtube.com/..." /></label>
+        <label>Spotify<input id="linkSpotify" type="url" placeholder="https://open.spotify.com/..." /></label>
+        <label>SoundCloud<input id="linkSoundcloud" type="url" placeholder="https://soundcloud.com/..." /></label>
+        <label>TikTok<input id="linkTiktok" type="url" placeholder="https://tiktok.com/@..." /></label>
+        <label>Sito web<input id="linkWebsite" type="url" placeholder="https://..." /></label>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelProfileBtn">Annulla</button>
+        <button class="primary-btn" type="submit">Salva profilo</button>
+      </div>
+      <p id="profileMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
   <dialog id="threadDialog" class="modal">
-    <form class="modal-card" id="threadForm">
+    <form class="modal-card composer-real" id="threadForm">
       <button class="close-btn" type="button" id="closeThreadBtn">×</button>
       <h2>Nuova discussione</h2>
       <label>Titolo<input id="newTitle" type="text" maxlength="120" placeholder="Titolo chiaro e specifico" required /></label>
       <label>Categoria<select id="newCategory" required></select></label>
-      <label>Testo<textarea id="newBody" rows="8" maxlength="6000" placeholder="Scrivi il contenuto della discussione..." required></textarea></label>
+      <label>Testo<textarea id="newBody" rows="8" maxlength="6000" placeholder="Scrivi il contenuto. Puoi aggiungere foto, link, video YouTube/Vimeo, Spotify o SoundCloud." required></textarea></label>
+      <div id="threadMediaPreview" class="media-preview"></div>
+      <div class="composer-tools">
+        <label class="tool-btn">📷 Foto<input id="threadFiles" type="file" accept="image/*" multiple hidden></label>
+        <button id="threadAddLinkBtn" class="tool-btn" type="button">🔗 Link / Video</button>
+        <button id="clearThreadMediaBtn" class="tool-btn danger" type="button">Pulisci media</button>
+      </div>
+      <p class="muted small">Limite consigliato: immagini leggere. Per video pesanti usa link YouTube/Vimeo: Supabase free non va trattato come archivio video illimitato.</p>
       <div class="modal-actions">
         <button class="secondary-btn" type="button" id="cancelThreadBtn">Annulla</button>
         <button class="primary-btn" type="submit">Pubblica</button>
@@ -171,10 +235,24 @@
     </form>
   </dialog>
 
+  <dialog id="linkDialog" class="modal small-modal">
+    <form class="modal-card" id="linkForm">
+      <button class="close-btn" type="button" id="closeLinkBtn">×</button>
+      <h2>Aggiungi link o video</h2>
+      <label>URL<input id="mediaUrl" type="url" placeholder="https://youtube.com/..." required></label>
+      <label>Titolo opzionale<input id="mediaTitle" type="text" maxlength="90" placeholder="Titolo del link"></label>
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelLinkBtn">Annulla</button>
+        <button class="primary-btn" type="submit">Aggiungi</button>
+      </div>
+      <p class="muted small">YouTube, Vimeo, Spotify e SoundCloud vengono riconosciuti e mostrati come embed quando possibile.</p>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <footer class="footer">
-    <span>© 2026 Zerouan.com</span>
+    <span>© 2026 Zerouan INC. · INC. Forum</span>
     <a href="regolamento.html">Regolamento</a>
     <a href="privacy.html">Privacy</a>
     <a href="contatti.html">Contatti</a>
