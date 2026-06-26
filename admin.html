@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INC. Forum · Admin Control Panel</title>
+  <meta name="description" content="Pannello admin INC. Forum: moderazione, utenti, ruoli, sicurezza, antispam, upload, notifiche e integrazioni." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="forum.css" />
+  <link rel="stylesheet" href="admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-theme="dark" data-admin-page="true">
+  <div class="site-bg"></div>
+
+  <header class="topbar admin-topbar">
+    <a class="brand" href="index.html" aria-label="Vai alla homepage Zerouan INC.">
+      <span class="brand-mark">Z</span>
+      <span class="brand-text">INC. Admin</span>
+    </a>
+    <nav class="main-nav" aria-label="Navigazione principale">
+      <a href="forum.html">Forum</a>
+      <a class="active" href="admin.html">Admin</a>
+      <a href="index.html">Chi siamo</a>
+    </nav>
+    <div class="top-actions">
+      <button id="themeBtn" class="icon-btn" type="button" title="Cambia tema">◐</button>
+      <button id="loginBtn" class="icon-btn" type="button" title="Accedi">👤</button>
+      <button id="logoutBtn" class="icon-btn hidden" type="button" title="Esci">↪</button>
+      <div id="userBadge" class="user-badge">Controllo sessione…</div>
+    </div>
+  </header>
+
+  <main class="admin-shell">
+    <aside class="admin-sidebar panel">
+      <div class="admin-sidebar-head">
+        <p class="eyebrow">Admin Control Panel</p>
+        <h1>Pannello INC. Forum</h1>
+        <p class="muted small">Tutte le azioni sensibili passano dalla Edge Function con JWT, ruolo e audit log.</p>
+      </div>
+      <nav class="admin-side-nav" aria-label="Sezioni admin">
+        <button class="active" data-panel="dashboard" type="button">📊 Dashboard</button>
+        <button data-panel="moderation" type="button">🧹 Moderazione</button>
+        <button data-panel="reports" type="button">🚩 Segnalazioni</button>
+        <button data-panel="users" type="button">👥 Utenti & ruoli</button>
+        <button data-panel="permissions" type="button">🔐 Permessi</button>
+        <button data-panel="categories" type="button">🗂️ Categorie</button>
+        <button data-panel="security" type="button">🛡️ Sicurezza</button>
+        <button data-panel="antispam" type="button">🧬 Anti-spam</button>
+        <button data-panel="uploads" type="button">📦 Upload</button>
+        <button data-panel="notifications" type="button">🔔 Notifiche</button>
+        <button data-panel="integrations" type="button">🔌 Integrazioni</button>
+        <button data-panel="blocks" type="button">🧱 HTML/CSS</button>
+        <button data-panel="rules" type="button">📜 Regole sito</button>
+        <button data-panel="audit" type="button">🧾 Audit log</button>
+      </nav>
+    </aside>
+
+    <section class="admin-main">
+      <section class="admin-hero panel">
+        <div>
+          <p class="eyebrow">Server-side moderation</p>
+          <h2 id="panelTitle">Dashboard</h2>
+          <p id="panelSubtitle" class="muted">Controllo rapido di contenuti, utenti, sicurezza, notifiche e impostazioni operative.</p>
+        </div>
+        <div class="admin-hero-actions">
+          <button id="refreshBtn" class="primary-btn" type="button">Aggiorna dati</button>
+          <button id="openForumBtn" class="secondary-btn" type="button">Apri forum</button>
+        </div>
+      </section>
+
+      <section id="authGate" class="panel admin-gate hidden">
+        <h2>Accesso richiesto</h2>
+        <p class="muted">Devi accedere con un profilo <strong>admin</strong> o <strong>moderator</strong>. Se sei già loggato nel forum, premi aggiorna.</p>
+        <div class="admin-actions-left">
+          <button id="gateLoginBtn" class="primary-btn" type="button">Accedi</button>
+          <button id="gateRefreshBtn" class="secondary-btn" type="button">Ricontrolla sessione</button>
+        </div>
+      </section>
+
+      <section id="panelDashboard" class="admin-panel active">
+        <div class="metric-grid">
+          <article class="metric-card panel"><span>Utenti</span><strong id="mUsers">—</strong><small>totali</small></article>
+          <article class="metric-card panel"><span>Discussioni</span><strong id="mThreads">—</strong><small>approvate + visibili</small></article>
+          <article class="metric-card panel"><span>Risposte</span><strong id="mPosts">—</strong><small>approvate + visibili</small></article>
+          <article class="metric-card panel"><span>Segnalazioni</span><strong id="mReports">—</strong><small>aperte</small></article>
+          <article class="metric-card panel"><span>In revisione</span><strong id="mPending">—</strong><small>spam/moderazione</small></article>
+          <article class="metric-card panel"><span>Upload</span><strong id="mUploads">—</strong><small>file tracciati</small></article>
+        </div>
+        <div class="admin-two-col">
+          <section class="panel admin-card"><h3>Ultime azioni admin</h3><div id="dashEvents" class="admin-list compact"></div></section>
+          <section class="panel admin-card"><h3>Rischi aperti</h3><div id="dashRisks" class="admin-list compact"></div></section>
+        </div>
+      </section>
+
+      <section id="panelModeration" class="admin-panel">
+        <div class="admin-toolbar panel">
+          <input id="contentSearch" type="search" placeholder="Cerca titolo, testo, autore, tag…">
+          <select id="contentStatus"><option value="all">Tutti gli stati</option><option value="approved">Approvati</option><option value="pending">In revisione</option><option value="rejected">Respinti</option><option value="deleted">Nascosti</option></select>
+          <select id="contentCategory"><option value="all">Tutte le categorie</option></select>
+          <select id="contentType"><option value="threads">Discussioni</option><option value="posts">Risposte</option><option value="sound_cards">Sound Cards</option></select>
+          <button id="contentReloadBtn" class="tool-btn" type="button">Filtra</button>
+        </div>
+        <div id="moderationList" class="admin-list"></div>
+      </section>
+
+      <section id="panelReports" class="admin-panel">
+        <div class="admin-toolbar panel">
+          <select id="reportStatus"><option value="open">Aperte</option><option value="resolved">Risolte</option><option value="dismissed">Archiviate</option><option value="all">Tutte</option></select>
+          <button id="reportsReloadBtn" class="tool-btn" type="button">Aggiorna</button>
+        </div>
+        <div id="reportsList" class="admin-list"></div>
+      </section>
+
+      <section id="panelUsers" class="admin-panel">
+        <div class="admin-toolbar panel">
+          <input id="userSearch" type="search" placeholder="Cerca utente, username, ruolo…">
+          <select id="userRoleFilter"><option value="all">Tutti i ruoli</option><option value="owner">Owner</option><option value="admin">Admin</option><option value="moderator">Moderator</option><option value="trusted_user">Trusted</option><option value="user">User</option><option value="muted">Muted</option><option value="banned">Banned</option></select>
+          <button id="recalcGroupsBtn" class="tool-btn" type="button">Ricalcola gruppi</button>
+        </div>
+        <div id="usersList" class="admin-list"></div>
+      </section>
+
+      <section id="panelPermissions" class="admin-panel">
+        <div class="panel admin-card">
+          <h3>Matrice ruoli/permessi</h3>
+          <p class="muted small">Modifica permessi granulari senza promuovere tutti ad admin. Il backend continua a bloccare operazioni non consentite.</p>
+          <div id="permissionsMatrix" class="permissions-matrix"></div>
+          <div class="modal-actions"><button id="savePermissionsBtn" class="primary-btn" type="button">Salva matrice permessi</button></div>
+        </div>
+      </section>
+
+      <section id="panelCategories" class="admin-panel">
+        <form id="categoryForm" class="panel admin-form-grid">
+          <input id="catId" type="hidden">
+          <label>Nome<input id="catName" required maxlength="80" placeholder="Produzione musicale"></label>
+          <label>Slug<input id="catSlug" required maxlength="80" placeholder="produzione-musicale"></label>
+          <label>Icona<input id="catIcon" maxlength="8" value="◆"></label>
+          <label>Ordine<input id="catSort" type="number" value="50"></label>
+          <label class="span-2">Descrizione<input id="catDescription" maxlength="260" placeholder="Descrizione breve visibile nel forum"></label>
+          <div class="span-2 modal-actions"><button class="secondary-btn" id="catResetBtn" type="button">Nuova</button><button class="primary-btn" type="submit">Salva categoria</button></div>
+        </form>
+        <div id="categoriesList" class="admin-list"></div>
+      </section>
+
+      <section id="panelSecurity" class="admin-panel">
+        <form id="securityForm" class="panel admin-form-grid">
+          <label>Richiedi email verificata<select id="secRequireEmail"><option value="true">Sì</option><option value="false">No</option></select></label>
+          <label>Età minima account per link, ore<input id="secMinAgeLinks" type="number" min="0" value="24"></label>
+          <label>Max post/ora<input id="secMaxPostsHour" type="number" min="1" value="3"></label>
+          <label>Max commenti/ora<input id="secMaxCommentsHour" type="number" min="1" value="8"></label>
+          <label>Auto-hide dopo segnalazioni<input id="secAutoHideReports" type="number" min="1" value="3"></label>
+          <label>Log retention giorni<input id="secLogRetention" type="number" min="7" value="180"></label>
+          <label class="span-2">Domini consentiti embed<input id="secAllowedHosts" placeholder="youtube.com, open.spotify.com, soundcloud.com"></label>
+          <div class="span-2 modal-actions"><button class="primary-btn" type="submit">Salva sicurezza</button></div>
+        </form>
+        <div id="securityEvents" class="admin-list"></div>
+      </section>
+
+      <section id="panelAntispam" class="admin-panel">
+        <form id="antispamForm" class="panel admin-form-grid">
+          <label>Score spam per revisione<input id="spamHoldScore" type="number" min="1" value="8"></label>
+          <label>Max link per post<input id="spamMaxLinks" type="number" min="0" value="3"></label>
+          <label>Cooldown post secondi<input id="spamPostCooldown" type="number" min="0" value="600"></label>
+          <label>Cooldown commenti secondi<input id="spamCommentCooldown" type="number" min="0" value="120"></label>
+          <label class="span-2">Parole bloccate<textarea id="blockedWords" rows="5" placeholder="una parola/frase per riga"></textarea></label>
+          <label class="span-2">Domini bloccati<textarea id="blockedDomains" rows="5" placeholder="dominio.com"></textarea></label>
+          <div class="span-2 modal-actions"><button class="primary-btn" type="submit">Salva anti-spam</button></div>
+        </form>
+      </section>
+
+      <section id="panelUploads" class="admin-panel">
+        <form id="uploadForm" class="panel admin-form-grid">
+          <label>Upload attivi<select id="upEnabled"><option value="true">Sì</option><option value="false">No</option></select></label>
+          <label>Dimensione max MB<input id="upMaxMb" type="number" min="1" max="25" value="6"></label>
+          <label class="span-2">MIME type consentiti<input id="upMimeTypes" value="image/jpeg, image/png, image/webp, image/gif"></label>
+          <label>Bucket<input id="upBucket" value="forum-media"></label>
+          <label>Auto delete file orfani, giorni<input id="upOrphanDays" type="number" min="1" value="30"></label>
+          <div class="span-2 modal-actions"><button class="primary-btn" type="submit">Salva upload</button></div>
+        </form>
+        <div id="uploadsList" class="admin-list"></div>
+      </section>
+
+      <section id="panelNotifications" class="admin-panel">
+        <form id="notificationForm" class="panel admin-form-grid">
+          <label>Tipo<select id="notifType"><option value="announcement">Annuncio</option><option value="moderation">Moderazione</option><option value="security">Sicurezza</option></select></label>
+          <label>Destinatario<select id="notifTarget"><option value="all">Tutti</option><option value="staff">Solo staff</option></select></label>
+          <label class="span-2">Titolo<input id="notifTitle" maxlength="120" required></label>
+          <label class="span-2">Messaggio<textarea id="notifBody" rows="5" required></textarea></label>
+          <div class="span-2 modal-actions"><button class="primary-btn" type="submit">Invia notifica</button></div>
+        </form>
+        <div id="notificationsList" class="admin-list"></div>
+      </section>
+
+      <section id="panelIntegrations" class="admin-panel">
+        <form id="integrationsForm" class="panel admin-form-grid">
+          <label>Discord webhook attivo<select id="intDiscordEnabled"><option value="false">No</option><option value="true">Sì</option></select></label>
+          <label>Telegram attivo<select id="intTelegramEnabled"><option value="false">No</option><option value="true">Sì</option></select></label>
+          <label class="span-2">Discord webhook URL<input id="intDiscordUrl" type="url" placeholder="Salvare solo se accetti il rischio: meglio Supabase Secrets"></label>
+          <label class="span-2">Email admin<input id="intAdminEmail" type="email" placeholder="admin@example.com"></label>
+          <label class="span-2">Whitelist embed/social<input id="intEmbedHosts" placeholder="youtube.com, spotify.com, instagram.com"></label>
+          <div class="span-2 modal-actions"><button class="primary-btn" type="submit">Salva integrazioni</button></div>
+        </form>
+      </section>
+
+      <section id="panelBlocks" class="admin-panel">
+        <form id="blockForm" class="panel admin-form-grid">
+          <input id="blockId" type="hidden">
+          <label>Titolo<input id="blockTitle" maxlength="90" placeholder="Banner, promo, regolamento"></label>
+          <label>Posizione<select id="blockLocation"><option value="forum_top">Forum top</option><option value="sound_top">Sound Cards top</option><option value="admin_top">Admin top</option></select></label>
+          <label>Ordine<input id="blockSort" type="number" value="100"></label>
+          <label>Attivo<select id="blockActive"><option value="true">Sì</option><option value="false">No</option></select></label>
+          <label class="span-2">HTML<textarea id="blockHtml" rows="8" spellcheck="false"></textarea></label>
+          <label class="span-2">CSS<textarea id="blockCss" rows="6" spellcheck="false"></textarea></label>
+          <div class="span-2 admin-preview" id="blockPreview"></div>
+          <div class="span-2 modal-actions"><button id="blockTemplateBtn" class="secondary-btn" type="button">Template</button><button id="blockPreviewBtn" class="secondary-btn" type="button">Anteprima</button><button class="primary-btn" type="submit">Salva blocco</button></div>
+        </form>
+        <div id="blocksList" class="admin-list"></div>
+      </section>
+
+      <section id="panelRules" class="admin-panel">
+        <form id="rulesForm" class="panel admin-form-grid">
+          <label class="span-2">Titolo regolamento<input id="rulesTitle" maxlength="120" placeholder="Regolamento INC. Forum"></label>
+          <label class="span-2">Regole pubbliche<textarea id="rulesBody" rows="14" placeholder="Regole, policy, limiti, criteri moderazione..."></textarea></label>
+          <div class="span-2 modal-actions"><button class="primary-btn" type="submit">Salva regole</button></div>
+        </form>
+      </section>
+
+      <section id="panelAudit" class="admin-panel">
+        <div class="admin-toolbar panel">
+          <input id="auditSearch" type="search" placeholder="Cerca azione, target, actor…">
+          <select id="auditAction"><option value="all">Tutte le azioni</option></select>
+          <button id="auditReloadBtn" class="tool-btn" type="button">Aggiorna</button>
+        </div>
+        <div id="auditList" class="admin-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="authDialog" class="modal small-modal">
+    <form method="dialog" class="modal-card" id="authForm">
+      <button class="close-btn" type="button" id="closeAuthBtn">×</button>
+      <h2>Accesso admin</h2>
+      <label>Email<input id="authEmail" type="email" required></label>
+      <label>Password<input id="authPassword" type="password" minlength="6" required></label>
+      <div class="modal-actions"><button class="secondary-btn" type="button" id="cancelAuthBtn">Annulla</button><button class="primary-btn" type="button" id="doLoginBtn">Accedi</button></div>
+      <p id="authMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <dialog id="editDialog" class="modal">
+    <form class="modal-card" id="editForm">
+      <button class="close-btn" type="button" id="closeEditBtn">×</button>
+      <h2 id="editTitle">Modifica</h2>
+      <div id="editFields" class="admin-form-grid"></div>
+      <div class="modal-actions"><button class="secondary-btn" type="button" id="cancelEditBtn">Annulla</button><button class="primary-btn" type="submit">Salva</button></div>
+      <p id="editMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="admin.js"></script>
+</body>
+</html>
