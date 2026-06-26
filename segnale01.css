@@ -505,8 +505,9 @@
   .sound-node-cover {
     height: 96px;
   }
+}
 
-  .sound-map {
+.sound-map {
   position: relative;
   min-height: 780px;
   height: min(82vh, 920px);
@@ -781,4 +782,83 @@
   letter-spacing: 0.08em;
   font-weight: 900;
 }
+
+/* Layout hardening shared by the Sound Cards page */
+.signal-page,
+.signal-hero,
+.signal-hero-grid,
+.signal-hero-copy,
+.signal-oracle-card,
+.signal-workspace,
+.signal-layout,
+.signal-map-panel,
+.signal-form-panel,
+.panel-header,
+.map-toolbar,
+.sound-card-form,
+.card-modal-inner,
+.sound-card-detail-body,
+.artist-mini,
+.detail-section{
+  min-width:0;
+}
+
+.signal-oracle-card,
+.signal-map-panel,
+.signal-form-panel,
+.card-modal-inner,
+.sound-node{
+  overflow-wrap:anywhere;
+}
+
+.panel-header{
+  align-items:flex-start;
+}
+
+.panel-header > *{
+  min-width:0;
+}
+
+.map-actions,
+.spotify-lookup-row,
+.detail-meta{
+  min-width:0;
+}
+
+.map-btn,
+.ghost-button,
+.form-submit,
+.selected-badge,
+.detail-meta span{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+.sound-node-title,
+.sound-node-artist{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.sound-node-tags span{
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+@media (max-width: 700px) {
+  .panel-header{
+    flex-direction:column;
+  }
+
+  .map-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  .map-actions .map-btn,
+  .map-actions .ghost-button{
+    flex:1 1 calc(50% - 8px);
+  }
 }

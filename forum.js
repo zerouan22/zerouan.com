@@ -74,6 +74,7 @@ async function init() {
   applySavedTheme();
   await loadSession();
   await Promise.all([loadCategories(), loadStats(), loadLivePanels(), loadThreads(), loadSoundCards(), loadAdminBlocks()]);
+  await openInitialThreadFromUrl();
   subscribeRealtime();
   startHeartbeat();
 }
@@ -179,7 +180,7 @@ function renderThreads() {
   const items = filteredThreads(); els.emptyThreads.classList.toggle('hidden', items.length>0);
   els.threadList.innerHTML = items.map(t => {
     const media = mediaArray(t.media_items); const profile = {display_name:t.author_name, avatar_url:t.author_avatar_url};
-    return `<article class="thread-item" data-id="${t.id}"><div class="author-avatar" style="${t.author_avatar_url?`background-image:url('${escapeHtml(t.author_avatar_url)}')`:''}">${t.author_avatar_url?'':initial(t.author_name)}</div><div><div class="author-row"><a class="profile-link">${escapeHtml(t.author_name)}</a><span class="badge">${escapeHtml(t.author_role || 'user')}</span><span class="muted small">${fmtDate(t.created_at)}</span>${media.length?`<span class="media-badge">📎 ${media.length} media</span>`:''}</div><h3>${escapeHtml(t.title)}</h3><p>${escapeHtml(t.body || '').slice(0,190)}${(t.body || '').length>190?'…':''}</p></div><div class="thread-stats"><span>💬 ${t.reply_count || 0}</span><span>👁 ${t.view_count || 0}</span></div></article>`;
+    return `<article class="thread-item" data-id="${t.id}"><div class="author-avatar" style="${t.author_avatar_url?`background-image:url('${escapeHtml(t.author_avatar_url)}')`:''}">${t.author_avatar_url?'':initial(t.author_name)}</div><div><div class="author-row"><a class="profile-link">${escapeHtml(t.author_name)}</a><span class="muted small">${fmtDate(t.created_at)}</span>${media.length?`<span class="media-badge">📎 ${media.length} media</span>`:''}</div><h3>${escapeHtml(t.title)}</h3><p>${escapeHtml(t.body || '').slice(0,190)}${(t.body || '').length>190?'…':''}</p></div><div class="thread-stats"><span>💬 ${t.reply_count || 0}</span><span>👁 ${t.view_count || 0}</span></div></article>`;
   }).join('');
   els.threadList.querySelectorAll('.thread-item').forEach(el => el.addEventListener('click', () => openThread(el.dataset.id)));
 }
@@ -770,6 +771,7 @@ function openSoundCardDetail(id){
 const RESERVED_CATEGORY_SLUGS = new Set(['sound-cards','soundcards','sound_cards']);
 const ADMIN_ONLY_SLUGS = new Set(['annunci']);
 const ARTIST_ONLY_SLUGS = new Set(['promozioni-release','promozioni-e-release','promozioni_release','release','promo-release']);
+const HOMEPAGE_NEWS_TAG = 'homepage-news';
 
 function userGroup(){
   return String(state.profile?.user_group || state.profile?.profile_type || state.profile?.role || 'user').toLowerCase();
@@ -788,8 +790,6 @@ function canCreateInCategory(cat){
   return !!state.user;
 }
 function categoryRestrictionText(cat){
-  if(isAnnouncementCategory(cat)) return 'Solo admin';
-  if(isPromotionCategory(cat)) return 'Solo artisti';
   return '';
 }
 
@@ -813,11 +813,10 @@ renderCategories = function() {
     state.selectedCategorySlug = visible[0].slug;
   }
   els.categoryList.innerHTML = visible.map(cat => {
-    const locked = categoryRestrictionText(cat);
     const isActive = cat.id===state.selectedCategoryId;
-    return `<button class="category-item ${isActive?'active':''} ${locked?'restricted':''}" type="button" data-id="${cat.id}">
+    return `<button class="category-item ${isActive?'active':''}" type="button" data-id="${cat.id}">
       <span class="left"><span>${escapeHtml(cat.icon)}</span><span>${escapeHtml(cat.name)}</span></span>
-      <span class="category-meta">${locked?`<em>${escapeHtml(locked)}</em>`:''}<span class="pill">${cat.thread_count || 0}</span></span>
+      <span class="category-meta"><span class="pill">${cat.thread_count || 0}</span></span>
     </button>`;
   }).join('');
   els.categoryList.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
@@ -837,8 +836,7 @@ renderCategorySelect = function() {
   const visible = state.categories.filter(c=>!isReservedCategory(c));
   els.newCategory.innerHTML = visible.map(c=>{
     const blocked = state.user && !canCreateInCategory(c);
-    const note = categoryRestrictionText(c);
-    return `<option value="${c.id}" ${blocked?'disabled':''}>${escapeHtml(c.icon)} ${escapeHtml(c.name)}${note?` — ${escapeHtml(note)}`:''}</option>`;
+    return `<option value="${c.id}" ${blocked?'disabled':''}>${escapeHtml(c.icon)} ${escapeHtml(c.name)}</option>`;
   }).join('');
 };
 
@@ -866,8 +864,7 @@ openThreadComposer = function(sourceId) {
   if (sourceId === 'quickMusicBtn') return openSoundCardComposer();
   const selected = categoryById(state.selectedCategoryId);
   if(selected && !canCreateInCategory(selected)){
-    if(isAnnouncementCategory(selected)) return toast('La sezione Annunci è riservata agli admin.');
-    if(isPromotionCategory(selected)) return toast('La sezione Promozioni & Release è riservata ai profili Artista.');
+    return toast('Non puoi pubblicare in questa sezione.');
   }
   state.threadMedia=[]; els.threadForm.reset(); els.threadMessage.textContent='';
   els.newCategory.value = firstAllowedCategoryId(state.selectedCategoryId);
@@ -882,9 +879,7 @@ createThread = async function(e){
   if (!state.user) return requireLogin();
   const cat = categoryById(els.newCategory.value);
   if(!canCreateInCategory(cat)){
-    if(isAnnouncementCategory(cat)){ els.threadMessage.textContent = 'Non puoi pubblicare qui: Annunci è riservata agli admin.'; return; }
-    if(isPromotionCategory(cat)){ els.threadMessage.textContent = 'Non puoi pubblicare qui: Promozioni & Release richiede profilo Artista.'; return; }
-    els.threadMessage.textContent = 'Categoria non pubblicabile.'; return;
+    els.threadMessage.textContent = 'Non puoi pubblicare in questa sezione.'; return;
   }
   return _createThreadV32(e);
 };
@@ -958,6 +953,36 @@ saveProfile = async function(e) {
 function chipsHtml(values, max=4){
   return (values || []).filter(Boolean).slice(0,max).map(v=>`<span>${escapeHtml(v)}</span>`).join('');
 }
+function publicUserGroup(profile){
+  if(!profile) return 'visitatore';
+  if(profile.is_artist || String(profile.user_group||'').toLowerCase()==='artist' || String(profile.role||'').toLowerCase()==='artist') return 'artista';
+  const g = String(profile.user_group || 'visitatore').toLowerCase();
+  if(['scrittore','critico','ascoltatore','visitatore'].includes(g)) return g;
+  return 'visitatore';
+}
+function groupDisplayName(group){
+  const labels = {
+    artista:'ARTISTA',
+    scrittore:'SCRITTORE',
+    critico:'CRITICO',
+    ascoltatore:'ASCOLTATORE',
+    visitatore:'VISITATORE'
+  };
+  return labels[group] || String(group || 'visitatore').toUpperCase();
+}
+function groupBadgeHtml(profile, role){
+  const g = publicUserGroup(profile || {role});
+  return `<span class="badge group-badge ${escapeHtml(g)}">${escapeHtml(groupDisplayName(g))}</span>`;
+}
+function profileFromOverview(row){
+  return {
+    display_name: row.author_name,
+    avatar_url: row.author_avatar_url,
+    role: row.author_role,
+    user_group: row.author_user_group || row.user_group || row.profile_group,
+    is_artist: row.author_is_artist || row.is_artist
+  };
+}
 function forumUserCardHtml(profile, fallbackName, role){
   const extra = profile?.profile_extra || {};
   const art = profile?.artist_profile || {};
@@ -968,7 +993,7 @@ function forumUserCardHtml(profile, fallbackName, role){
   return `<aside class="forum-user-card">
     <div class="author-avatar xl" ${avatarStyle}>${profile?.avatar_url?'':initial(name)}</div>
     <strong>${escapeHtml(name)}</strong>
-    <span class="badge ${artist?'artist-badge':''}">${escapeHtml(artist?'artist':(role || profile?.role || 'user'))}</span>
+    ${groupBadgeHtml(profile || {role}, role)}
     ${extra.headline?`<p>${escapeHtml(extra.headline)}</p>`:''}
     ${extra.location?`<small>📍 ${escapeHtml(extra.location)}</small>`:''}
     ${genreChips?`<div class="forum-user-chips">${genreChips}</div>`:''}
@@ -1010,7 +1035,7 @@ loadPosts = async function(threadId) {
     return `<article class="post classic-reply-post">
       ${forumUserCardHtml(prof, p.author_name, p.author_role)}
       <div class="forum-post-content">
-        <div class="author-row"><strong>${escapeHtml(p.author_name)}</strong><span class="badge">${escapeHtml(p.author_role || 'user')}</span><span class="muted small">${fmtDate(p.created_at)}</span></div>
+        <div class="author-row"><strong>${escapeHtml(p.author_name)}</strong><span class="muted small">${fmtDate(p.created_at)}</span></div>
         <div class="post-body">${escapeHtml(p.body)}</div>
         <div class="media-grid">${mediaHtml(mediaArray(p.media_items))}</div>
         ${extra.signature?`<div class="forum-signature">${escapeHtml(extra.signature)}</div>`:''}
@@ -1024,18 +1049,6 @@ loadPosts = async function(threadId) {
 state.reactions = {};
 state.adminUsers = [];
 state.adminBlocksCache = [];
-
-function publicUserGroup(profile){
-  if(!profile) return 'visitatore';
-  if(profile.is_artist || String(profile.user_group||'').toLowerCase()==='artist' || String(profile.role||'').toLowerCase()==='artist') return 'artista';
-  const g = String(profile.user_group || 'visitatore').toLowerCase();
-  if(['scrittore','critico','ascoltatore','visitatore'].includes(g)) return g;
-  return 'visitatore';
-}
-function groupBadgeHtml(profile, role){
-  const g = publicUserGroup(profile || {role});
-  return `<span class="badge group-badge ${escapeHtml(g)}">${escapeHtml(g)}</span>`;
-}
 function reactionCounts(id){ return state.reactions[id] || {like:0, dislike:0, share:0}; }
 function reactionBarHtml(threadId, compact=false){
   const r = reactionCounts(threadId);
@@ -1109,10 +1122,13 @@ renderThreads = function(){
       <button type="button" data-admin-move-thread="${escapeHtml(t.id)}">Sposta</button>
       <button type="button" class="admin-danger" data-admin-delete-thread="${escapeHtml(t.id)}">Elimina</button>
     </div>` : '';
+    const authorProfile = profileFromOverview(t);
+    const hasPublicGroup = authorProfile.user_group || authorProfile.is_artist || String(authorProfile.role||'').toLowerCase()==='artist';
+    const groupBadge = hasPublicGroup ? groupBadgeHtml(authorProfile, t.author_role) : '';
     return `<article class="thread-item" data-id="${escapeHtml(t.id)}">
       <div class="author-avatar" style="${t.author_avatar_url?`background-image:url('${escapeHtml(t.author_avatar_url)}')`:''}">${t.author_avatar_url?'':initial(t.author_name)}</div>
       <div>
-        <div class="author-row"><a class="profile-link">${escapeHtml(t.author_name)}</a><span class="badge">${escapeHtml(t.author_role || 'user')}</span><span class="muted small">${fmtDate(t.created_at)}</span>${media.length?`<span class="media-badge">📎 ${media.length} media</span>`:''}</div>
+        <div class="author-row"><a class="profile-link">${escapeHtml(t.author_name)}</a>${groupBadge}<span class="muted small">${fmtDate(t.created_at)}</span>${media.length?`<span class="media-badge">📎 ${media.length} media</span>`:''}</div>
         <h3>${escapeHtml(t.title)}</h3>
         <p>${escapeHtml(t.body || '').slice(0,190)}${(t.body || '').length>190?'…':''}</p>
         ${reactionBarHtml(t.id,true)}
@@ -1134,6 +1150,13 @@ openThread = async function(id){
   await _openThreadV34Base(id);
   renderThreadReactionInView(id);
 };
+async function openInitialThreadFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  const threadId = params.get('thread');
+  if(!threadId) return;
+  if(!state.threads.some(t=>t.id===threadId)) await loadThreads();
+  if(state.threads.some(t=>t.id===threadId)) await openThread(threadId);
+}
 
 const _createReplyV34Base = createReply;
 createReply = async function(e){
@@ -1174,13 +1197,22 @@ renderAuthState = function(){
   _renderAuthStateV34Base();
   const badge = $('userBadge'); if(!badge) return;
   const g = publicUserGroup(state.profile);
-  if(state.user && !badge.textContent.includes('·')) badge.textContent = `${badge.textContent} · ${g}`;
+  if(state.user && !badge.textContent.includes('·')) badge.textContent = `${badge.textContent} · ${groupDisplayName(g)}`;
 };
 
 function bindAdminThreadShortcutButtons(scope=document){
   scope.querySelectorAll('[data-admin-delete-thread]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminDeleteThread(btn.dataset.adminDeleteThread); }));
   scope.querySelectorAll('[data-admin-edit-thread]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminEditThread(btn.dataset.adminEditThread); }));
   scope.querySelectorAll('[data-admin-move-thread]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminMoveThread(btn.dataset.adminMoveThread); }));
+  scope.querySelectorAll('[data-admin-home-news]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminToggleHomepageNews(btn.dataset.adminHomeNews); }));
+}
+function threadTags(thread){
+  if(Array.isArray(thread?.tags)) return thread.tags.filter(Boolean).map(t=>String(t).trim()).filter(Boolean);
+  if(typeof thread?.tags === 'string') return thread.tags.split(',').map(t=>t.trim()).filter(Boolean);
+  return [];
+}
+function isHomepageNewsThread(thread){
+  return threadTags(thread).map(t=>t.toLowerCase()).includes(HOMEPAGE_NEWS_TAG);
 }
 async function adminDeleteThread(id){
   if(!isAdmin()) return toast('Accesso admin richiesto.');
@@ -1212,6 +1244,23 @@ async function adminMoveThread(id){
   const { error } = await db.from('threads').update({ category_id:cat.id }).eq('id', id);
   if(error) return toast(error.message);
   await Promise.all([loadThreads(), loadCategories()]); toast('Discussione spostata.');
+}
+async function adminToggleHomepageNews(id){
+  if(!isAdmin()) return toast('Accesso admin richiesto.');
+  const t = state.threads.find(x=>x.id===id); if(!t) return;
+  const { data: threadRow, error: fetchError } = await db.from('threads').select('tags').eq('id', id).maybeSingle();
+  if(fetchError) return toast(fetchError.message);
+  const currentThread = { ...t, tags: threadRow?.tags ?? t.tags };
+  const tags = threadTags(currentThread);
+  const active = isHomepageNewsThread(currentThread);
+  const nextTags = active
+    ? tags.filter(tag=>tag.toLowerCase()!==HOMEPAGE_NEWS_TAG)
+    : [...tags.filter(tag=>tag.toLowerCase()!==HOMEPAGE_NEWS_TAG), HOMEPAGE_NEWS_TAG];
+  const { error } = await db.from('threads').update({ tags: nextTags }).eq('id', id);
+  if(error) return toast(error.message);
+  await loadThreads();
+  renderAdminThreads();
+  toast(active ? 'Rimossa dalla bacheca News.' : 'Aggiunta alla bacheca News.');
 }
 
 /* Admin full dashboard */
@@ -1256,7 +1305,7 @@ function renderAdminThreads(){
   if(q) rows=rows.filter(t=>`${t.title} ${t.body} ${t.author_name}`.toLowerCase().includes(q));
   host.innerHTML=rows.slice(0,80).map(t=>`<div class="admin-row">
     <div><h4>${escapeHtml(t.title)}</h4><p>${escapeHtml(t.category_name||'')} · ${escapeHtml(t.author_name||'')} · ${fmtDate(t.created_at)} · ${t.reply_count||0} risposte · ${t.view_count||0} visite</p></div>
-    <div class="admin-row-actions"><button type="button" data-admin-edit-thread="${escapeHtml(t.id)}">Modifica</button><button type="button" data-admin-move-thread="${escapeHtml(t.id)}">Sposta</button><button type="button" class="admin-danger" data-admin-delete-thread="${escapeHtml(t.id)}">Elimina</button></div>
+    <div class="admin-row-actions"><button type="button" data-admin-home-news="${escapeHtml(t.id)}">${isHomepageNewsThread(t)?'Togli da News':'Metti in News'}</button><button type="button" data-admin-edit-thread="${escapeHtml(t.id)}">Modifica</button><button type="button" data-admin-move-thread="${escapeHtml(t.id)}">Sposta</button><button type="button" class="admin-danger" data-admin-delete-thread="${escapeHtml(t.id)}">Elimina</button></div>
   </div>`).join('') || '<p class="muted">Nessun contenuto trovato.</p>';
   bindAdminThreadShortcutButtons(host);
 }

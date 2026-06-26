@@ -7,6 +7,7 @@
   <title>ZEROUAN INC. | Homepage</title>
 
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     /* === TRIKINELLA COMING SOON — homepage top section === */
@@ -553,6 +554,7 @@
       <nav class="nav-links" aria-label="Navigazione principale">
         <a href="feedback.html">Feedback</a>
         <a href="#musica">Musica</a>
+        <a href="#news">News</a>
         <a href="#connessioni">Connessioni</a>
         <a href="forum.html">INC. Forum</a>
         <a href="#sections">Progetti</a>
@@ -671,6 +673,24 @@
         </div>
 
         <p class="trikinella-scroll-hint">Scrolla per entrare nella homepage Zerouan ↓</p>
+      </div>
+    </section>
+
+    <section class="homepage-news-section" id="news" aria-labelledby="homepage-news-title">
+      <div class="container">
+        <div class="section-heading align-left homepage-news-heading">
+          <p class="eyebrow">Bacheca dal Forum</p>
+          <h2 id="homepage-news-title">News</h2>
+          <p>Notizie, post e discussioni selezionate dall'amministrazione: restano nel forum, ma qui diventano una bacheca rapida da leggere.</p>
+        </div>
+
+        <div class="homepage-news-board" id="homepageNewsBoard" aria-live="polite">
+          <article class="homepage-news-feature skeleton-news-card">
+            <span class="news-kicker">Caricamento</span>
+            <h3>Sto recuperando la bacheca dal forum</h3>
+            <p>Le news selezionate dagli admin appariranno qui.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -970,7 +990,7 @@
       </div>
     </section>
 
-    <section class="sections" id="sections">
+    <section class="sections contact-cards-section" id="contatti-progetti">
       <div class="container section-grid">
         <article class="section-card" id="web-radio">
           <div class="section-icon">📡</div>
@@ -980,13 +1000,13 @@
           </p>
         </article>
 
-        <article class="section-card" id="podcast">
+        <article class="section-card" id="podcast-card">
           <div class="section-icon">🎙️</div>
           <h3>Segnale 01<span class="soon">Project</span></h3>
           <p>Conversazioni, storie, riflessioni e contenuti legati al progetto Zerouan.</p>
         </article>
 
-        <article class="section-card" id="community">
+        <article class="section-card" id="research-unit-card">
           <div class="section-icon">🧪</div>
           <h3>Research Unit <span class="soon">Project</span></h3>
           <p>Uno spazio futuro per commentare, discutere e realizzare insieme possibili progetti e collaborazioni.</p>
