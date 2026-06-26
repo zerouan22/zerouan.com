@@ -357,28 +357,85 @@
     </form>
   </dialog>
 
-  <dialog id="adminDialog" class="modal">
-    <form class="modal-card admin-card" id="adminForm">
+  <dialog id="adminDialog" class="modal admin-control-modal">
+    <div class="modal-card admin-control-card">
       <button class="close-btn" type="button" id="closeAdminBtn">×</button>
-      <h2>Admin editor</h2>
-      <p class="muted">Editor interno per blocchi HTML/CSS del forum. Visibile solo ai profili con <code>role = admin</code>.</p>
-      <div class="admin-grid">
-        <label>Titolo blocco<input id="adminBlockTitle" type="text" maxlength="90" placeholder="Banner release, regole, promo..."></label>
-        <label>Posizione<select id="adminBlockLocation"><option value="forum_top">Sopra feed forum</option><option value="sound_top">Sopra Sound Cards</option></select></label>
+      <div class="admin-control-head">
+        <div>
+          <p class="eyebrow">Admin Control Panel</p>
+          <h2>Pannello di controllo INC. Forum</h2>
+          <p class="muted">Gestione rapida di contenuti, utenti, categorie e blocchi HTML/CSS. Non sostituisce GitHub/Supabase per operazioni server sensibili, ma copre la moderazione e le modifiche frontend salvate nel database.</p>
+        </div>
+        <button class="primary-btn" type="button" id="refreshAdminPanelBtn">Aggiorna dati</button>
       </div>
-      <label>HTML<textarea id="adminHtml" rows="8" spellcheck="false" placeholder="<section class=&quot;custom-card&quot;>...</section>"></textarea></label>
-      <label>CSS<textarea id="adminCss" rows="6" spellcheck="false" placeholder=".custom-card { ... }"></textarea></label>
-      <div class="admin-tools">
-        <button class="tool-btn" type="button" id="insertAdminTemplateBtn">Inserisci template card</button>
-        <button class="tool-btn" type="button" id="previewAdminBtn">Anteprima</button>
+
+      <div class="admin-tabs" role="tablist" aria-label="Sezioni pannello admin">
+        <button class="admin-tab active" type="button" data-admin-tab="contents">Contenuti</button>
+        <button class="admin-tab" type="button" data-admin-tab="users">Utenti</button>
+        <button class="admin-tab" type="button" data-admin-tab="categories">Categorie</button>
+        <button class="admin-tab" type="button" data-admin-tab="blocks">Editor HTML/CSS</button>
+        <button class="admin-tab" type="button" data-admin-tab="rules">Regole sito</button>
       </div>
-      <div id="adminPreview" class="admin-preview"></div>
-      <div class="modal-actions">
-        <button class="secondary-btn" type="button" id="cancelAdminBtn">Annulla</button>
-        <button class="primary-btn" type="submit">Salva blocco</button>
-      </div>
-      <p id="adminMessage" class="form-message"></p>
-    </form>
+
+      <section id="adminTabContents" class="admin-tab-panel active">
+        <div class="admin-panel-toolbar">
+          <input id="adminContentSearch" type="search" placeholder="Cerca post/discussione...">
+          <select id="adminContentCategory"><option value="all">Tutte le categorie</option></select>
+        </div>
+        <div id="adminThreadsList" class="admin-list"></div>
+      </section>
+
+      <section id="adminTabUsers" class="admin-tab-panel">
+        <div class="admin-panel-toolbar">
+          <input id="adminUserSearch" type="search" placeholder="Cerca utente...">
+          <button class="tool-btn" type="button" id="recalcGroupsBtn">Ricalcola gruppi automatici</button>
+        </div>
+        <div id="adminUsersList" class="admin-list"></div>
+      </section>
+
+      <section id="adminTabCategories" class="admin-tab-panel">
+        <form id="adminCategoryForm" class="admin-inline-form">
+          <input id="adminCategoryName" type="text" placeholder="Nome categoria" required>
+          <input id="adminCategorySlug" type="text" placeholder="slug-categoria" required>
+          <input id="adminCategoryIcon" type="text" placeholder="Icona" value="◆">
+          <input id="adminCategorySort" type="number" placeholder="Ordine" value="50">
+          <button class="primary-btn" type="submit">Aggiungi categoria</button>
+        </form>
+        <div id="adminCategoriesList" class="admin-list"></div>
+      </section>
+
+      <section id="adminTabBlocks" class="admin-tab-panel">
+        <form id="adminForm" class="admin-card embedded-admin-form">
+          <h3>Shortcut editor HTML/CSS</h3>
+          <div class="admin-grid">
+            <label>Titolo blocco<input id="adminBlockTitle" type="text" maxlength="90" placeholder="Banner release, regole, promo..."></label>
+            <label>Posizione<select id="adminBlockLocation"><option value="forum_top">Sopra feed forum</option><option value="sound_top">Sopra Sound Cards</option></select></label>
+          </div>
+          <label>HTML<textarea id="adminHtml" rows="8" spellcheck="false" placeholder="<section class=&quot;custom-card&quot;>...</section>"></textarea></label>
+          <label>CSS<textarea id="adminCss" rows="6" spellcheck="false" placeholder=".custom-card { ... }"></textarea></label>
+          <div class="admin-tools">
+            <button class="tool-btn" type="button" id="insertAdminTemplateBtn">Inserisci template card</button>
+            <button class="tool-btn" type="button" id="previewAdminBtn">Anteprima</button>
+          </div>
+          <div id="adminPreview" class="admin-preview"></div>
+          <div class="modal-actions">
+            <button class="secondary-btn" type="button" id="cancelAdminBtn">Annulla</button>
+            <button class="primary-btn" type="submit">Salva blocco</button>
+          </div>
+          <p id="adminMessage" class="form-message"></p>
+        </form>
+        <div id="adminBlocksList" class="admin-list"></div>
+      </section>
+
+      <section id="adminTabRules" class="admin-tab-panel">
+        <form id="adminRulesForm" class="admin-rules-form">
+          <label>Titolo regolamento<input id="siteRulesTitle" type="text" maxlength="120" placeholder="Regolamento INC. Forum"></label>
+          <label>Regole / policy visibili<textarea id="siteRulesBody" rows="10" placeholder="Scrivi qui regole, limiti, criteri di moderazione, note per artisti..."></textarea></label>
+          <button class="primary-btn" type="submit">Salva regole</button>
+          <p class="muted small">Queste regole sono salvate in database. Il codice reale del sito resta gestito dai file in GitHub: dal pannello possiamo creare blocchi HTML/CSS e impostazioni, non fare commit sicuri al repository senza backend dedicato.</p>
+        </form>
+      </section>
+    </div>
   </dialog>
 
   <dialog id="linkDialog" class="modal small-modal">

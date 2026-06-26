@@ -1019,4 +1019,347 @@ loadPosts = async function(threadId) {
   }).join('') || '<p class="muted" style="padding:20px 24px">Ancora nessuna risposta.</p>';
 };
 
+
+/* ===================== INC FORUM V3.4: ADMIN CONTROL PANEL, AUTO GROUPS, REACTIONS ===================== */
+state.reactions = {};
+state.adminUsers = [];
+state.adminBlocksCache = [];
+
+function publicUserGroup(profile){
+  if(!profile) return 'visitatore';
+  if(profile.is_artist || String(profile.user_group||'').toLowerCase()==='artist' || String(profile.role||'').toLowerCase()==='artist') return 'artista';
+  const g = String(profile.user_group || 'visitatore').toLowerCase();
+  if(['scrittore','critico','ascoltatore','visitatore'].includes(g)) return g;
+  return 'visitatore';
+}
+function groupBadgeHtml(profile, role){
+  const g = publicUserGroup(profile || {role});
+  return `<span class="badge group-badge ${escapeHtml(g)}">${escapeHtml(g)}</span>`;
+}
+function reactionCounts(id){ return state.reactions[id] || {like:0, dislike:0, share:0}; }
+function reactionBarHtml(threadId, compact=false){
+  const r = reactionCounts(threadId);
+  return `<div class="reaction-bar ${compact?'compact':''}" data-thread-reactions="${escapeHtml(threadId)}">
+    <button class="reaction-btn" type="button" data-reaction="like" data-thread-id="${escapeHtml(threadId)}">👍 ${r.like||0}</button>
+    <button class="reaction-btn" type="button" data-reaction="dislike" data-thread-id="${escapeHtml(threadId)}">👎 ${r.dislike||0}</button>
+    <button class="reaction-btn" type="button" data-reaction="share" data-thread-id="${escapeHtml(threadId)}">↗ ${r.share||0}</button>
+  </div>`;
+}
+async function loadReactions(){
+  const ids = (state.threads || []).map(t=>t.id).filter(Boolean);
+  state.reactions = {};
+  if(!ids.length) return;
+  const { data } = await db.from('thread_reaction_counts').select('*').in('thread_id', ids);
+  (data || []).forEach(r=>{ state.reactions[r.thread_id] = {like:r.like_count||0, dislike:r.dislike_count||0, share:r.share_count||0}; });
+}
+async function reactThread(threadId, type){
+  if(type === 'share'){
+    const url = `${location.origin}${location.pathname}?thread=${encodeURIComponent(threadId)}`;
+    try{ await navigator.clipboard.writeText(url); toast('Link discussione copiato.'); }catch{ toast('Link: ' + url); }
+  }
+  if(!state.user) return requireLogin();
+  if(type === 'like' || type === 'dislike'){
+    const { data: existing } = await db.from('thread_reactions').select('id,reaction_type').eq('thread_id', threadId).eq('user_id', state.user.id).in('reaction_type', ['like','dislike']);
+    const same = (existing || []).find(r=>r.reaction_type === type);
+    if(same){
+      await db.from('thread_reactions').delete().eq('id', same.id);
+    } else {
+      await db.from('thread_reactions').delete().eq('thread_id', threadId).eq('user_id', state.user.id).in('reaction_type', ['like','dislike']);
+      const { error } = await db.from('thread_reactions').insert({ thread_id:threadId, user_id:state.user.id, reaction_type:type });
+      if(error) return toast(error.message);
+    }
+  } else {
+    const { error } = await db.from('thread_reactions').upsert({ thread_id:threadId, user_id:state.user.id, reaction_type:type }, { onConflict:'thread_id,user_id,reaction_type' });
+    if(error) return toast(error.message);
+  }
+  await loadReactions(); renderThreads();
+  if(state.currentThread?.id === threadId) renderThreadReactionInView(threadId);
+}
+function bindReactionButtons(scope=document){
+  scope.querySelectorAll('[data-reaction][data-thread-id]').forEach(btn=>{
+    btn.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); reactThread(btn.dataset.threadId, btn.dataset.reaction); });
+  });
+}
+function renderThreadReactionInView(threadId){
+  let host = $('threadReactionHost');
+  if(!host){
+    host = document.createElement('div'); host.id='threadReactionHost';
+    els.threadMedia?.insertAdjacentElement('afterend', host);
+  }
+  host.innerHTML = reactionBarHtml(threadId);
+  bindReactionButtons(host);
+}
+
+const _loadThreadsV34Base = loadThreads;
+loadThreads = async function(){
+  const { data, error } = await db.from('thread_overview').select('*').order('last_activity_at',{ascending:false}).limit(250);
+  if (error) return toast('Errore discussioni: ' + error.message);
+  state.threads = data || [];
+  await loadReactions();
+  renderThreads(); renderPopular();
+};
+
+renderThreads = function(){
+  const items = filteredThreads();
+  els.emptyThreads.classList.toggle('hidden', items.length>0);
+  els.threadList.innerHTML = items.map(t => {
+    const media = mediaArray(t.media_items);
+    const admin = isAdmin() ? `<div class="thread-admin-actions">
+      <button type="button" data-admin-edit-thread="${escapeHtml(t.id)}">Modifica</button>
+      <button type="button" data-admin-move-thread="${escapeHtml(t.id)}">Sposta</button>
+      <button type="button" class="admin-danger" data-admin-delete-thread="${escapeHtml(t.id)}">Elimina</button>
+    </div>` : '';
+    return `<article class="thread-item" data-id="${escapeHtml(t.id)}">
+      <div class="author-avatar" style="${t.author_avatar_url?`background-image:url('${escapeHtml(t.author_avatar_url)}')`:''}">${t.author_avatar_url?'':initial(t.author_name)}</div>
+      <div>
+        <div class="author-row"><a class="profile-link">${escapeHtml(t.author_name)}</a><span class="badge">${escapeHtml(t.author_role || 'user')}</span><span class="muted small">${fmtDate(t.created_at)}</span>${media.length?`<span class="media-badge">📎 ${media.length} media</span>`:''}</div>
+        <h3>${escapeHtml(t.title)}</h3>
+        <p>${escapeHtml(t.body || '').slice(0,190)}${(t.body || '').length>190?'…':''}</p>
+        ${reactionBarHtml(t.id,true)}
+        ${admin}
+      </div>
+      <div class="thread-stats"><span>💬 ${t.reply_count || 0}</span><span>👁 ${t.view_count || 0}</span></div>
+    </article>`;
+  }).join('');
+  els.threadList.querySelectorAll('.thread-item').forEach(el => el.addEventListener('click', e => {
+    if(e.target.closest('button,a,select,input,textarea')) return;
+    openThread(el.dataset.id);
+  }));
+  bindReactionButtons(els.threadList);
+  bindAdminThreadShortcutButtons(els.threadList);
+};
+
+const _openThreadV34Base = openThread;
+openThread = async function(id){
+  await _openThreadV34Base(id);
+  renderThreadReactionInView(id);
+};
+
+const _createReplyV34Base = createReply;
+createReply = async function(e){
+  await _createReplyV34Base(e);
+  if(state.user) await db.rpc('recalculate_user_group', { user_id_input: state.user.id });
+  await loadProfile(); renderAuthState();
+};
+
+const _createSoundCardV34Base = createSoundCard;
+createSoundCard = async function(e){
+  await _createSoundCardV34Base(e);
+  if(state.user) await db.rpc('recalculate_user_group', { user_id_input: state.user.id });
+  await loadProfile(); renderAuthState();
+};
+
+const _createThreadV34Base = createThread;
+createThread = async function(e){
+  const result = await _createThreadV34Base(e);
+  if(state.user) await db.rpc('recalculate_user_group', { user_id_input: state.user.id });
+  await loadProfile(); renderAuthState();
+  return result;
+};
+
+const _openSoundCardDetailV34Base = openSoundCardDetail;
+openSoundCardDetail = function(id){
+  _openSoundCardDetailV34Base(id);
+  recordSoundCardView(id);
+};
+async function recordSoundCardView(id){
+  if(!state.user || !id) return;
+  await db.from('sound_card_views').upsert({ sound_card_id:id, user_id:state.user.id }, { onConflict:'sound_card_id,user_id' });
+  await db.rpc('recalculate_user_group', { user_id_input: state.user.id });
+  await loadProfile(); renderAuthState();
+}
+
+const _renderAuthStateV34Base = renderAuthState;
+renderAuthState = function(){
+  _renderAuthStateV34Base();
+  const badge = $('userBadge'); if(!badge) return;
+  const g = publicUserGroup(state.profile);
+  if(state.user && !badge.textContent.includes('·')) badge.textContent = `${badge.textContent} · ${g}`;
+};
+
+function bindAdminThreadShortcutButtons(scope=document){
+  scope.querySelectorAll('[data-admin-delete-thread]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminDeleteThread(btn.dataset.adminDeleteThread); }));
+  scope.querySelectorAll('[data-admin-edit-thread]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminEditThread(btn.dataset.adminEditThread); }));
+  scope.querySelectorAll('[data-admin-move-thread]').forEach(btn=>btn.addEventListener('click', e=>{ e.stopPropagation(); adminMoveThread(btn.dataset.adminMoveThread); }));
+}
+async function adminDeleteThread(id){
+  if(!isAdmin()) return toast('Accesso admin richiesto.');
+  const t = state.threads.find(x=>x.id===id); if(!t) return;
+  if(!confirm(`Eliminare definitivamente la discussione: ${t.title}?`)) return;
+  const { error } = await db.from('threads').delete().eq('id', id);
+  if(error) return toast(error.message);
+  if(state.currentThread?.id === id) closeThread();
+  await Promise.all([loadThreads(), loadCategories(), loadStats(), loadLivePanels()]);
+  toast('Discussione eliminata.');
+}
+async function adminEditThread(id){
+  if(!isAdmin()) return toast('Accesso admin richiesto.');
+  const t = state.threads.find(x=>x.id===id); if(!t) return;
+  const title = prompt('Nuovo titolo:', t.title); if(title === null) return;
+  const body = prompt('Nuovo testo:', t.body || ''); if(body === null) return;
+  const { error } = await db.from('threads').update({ title:title.trim(), body:body.trim() }).eq('id', id);
+  if(error) return toast(error.message);
+  await loadThreads(); if(state.currentThread?.id===id) await openThread(id);
+  toast('Discussione modificata.');
+}
+async function adminMoveThread(id){
+  if(!isAdmin()) return toast('Accesso admin richiesto.');
+  const t = state.threads.find(x=>x.id===id); if(!t) return;
+  const visible = state.categories.filter(c=>!isReservedCategory(c));
+  const msg = visible.map((c,i)=>`${i+1}. ${c.name}`).join('\n');
+  const raw = prompt(`Sposta in quale categoria?\n${msg}`, '1'); if(raw===null) return;
+  const idx = Number(raw)-1; const cat = visible[idx]; if(!cat) return toast('Categoria non valida.');
+  const { error } = await db.from('threads').update({ category_id:cat.id }).eq('id', id);
+  if(error) return toast(error.message);
+  await Promise.all([loadThreads(), loadCategories()]); toast('Discussione spostata.');
+}
+
+/* Admin full dashboard */
+function setAdminTab(name){
+  document.querySelectorAll('.admin-tab').forEach(b=>b.classList.toggle('active', b.dataset.adminTab===name));
+  document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.remove('active'));
+  $('adminTab'+name.charAt(0).toUpperCase()+name.slice(1))?.classList.add('active');
+}
+function bindAdminControlEvents(){
+  document.querySelectorAll('.admin-tab').forEach(btn=>btn.addEventListener('click',()=>setAdminTab(btn.dataset.adminTab)));
+  $('refreshAdminPanelBtn')?.addEventListener('click', loadAdminDashboard);
+  $('adminContentSearch')?.addEventListener('input', renderAdminThreads);
+  $('adminContentCategory')?.addEventListener('change', renderAdminThreads);
+  $('adminUserSearch')?.addEventListener('input', renderAdminUsers);
+  $('recalcGroupsBtn')?.addEventListener('click', recalcAllGroups);
+  $('adminCategoryForm')?.addEventListener('submit', adminCreateCategory);
+  $('adminRulesForm')?.addEventListener('submit', adminSaveRules);
+}
+const _openAdminEditorV34Base = openAdminEditor;
+openAdminEditor = function(){
+  if(!isAdmin()) return toast('Accesso admin richiesto.');
+  $('adminDialog')?.showModal();
+  setAdminTab('contents');
+  loadAdminDashboard();
+};
+async function loadAdminDashboard(){
+  if(!isAdmin()) return;
+  await Promise.all([loadThreads(), loadCategories(), loadAdminUsers(), loadAdminBlocksForPanel(), loadAdminRules()]);
+  renderAdminCategoryFilter(); renderAdminThreads(); renderAdminUsers(); renderAdminCategories(); renderAdminBlocksPanel();
+}
+function renderAdminCategoryFilter(){
+  const sel=$('adminContentCategory'); if(!sel) return;
+  const current=sel.value || 'all';
+  sel.innerHTML='<option value="all">Tutte le categorie</option>'+state.categories.filter(c=>!isReservedCategory(c)).map(c=>`<option value="${escapeHtml(c.id)}">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</option>`).join('');
+  sel.value = [...sel.options].some(o=>o.value===current) ? current : 'all';
+}
+function renderAdminThreads(){
+  const host=$('adminThreadsList'); if(!host) return;
+  const q=($('adminContentSearch')?.value||'').toLowerCase().trim(); const cat=$('adminContentCategory')?.value||'all';
+  let rows=[...state.threads];
+  if(cat!=='all') rows=rows.filter(t=>t.category_id===cat);
+  if(q) rows=rows.filter(t=>`${t.title} ${t.body} ${t.author_name}`.toLowerCase().includes(q));
+  host.innerHTML=rows.slice(0,80).map(t=>`<div class="admin-row">
+    <div><h4>${escapeHtml(t.title)}</h4><p>${escapeHtml(t.category_name||'')} · ${escapeHtml(t.author_name||'')} · ${fmtDate(t.created_at)} · ${t.reply_count||0} risposte · ${t.view_count||0} visite</p></div>
+    <div class="admin-row-actions"><button type="button" data-admin-edit-thread="${escapeHtml(t.id)}">Modifica</button><button type="button" data-admin-move-thread="${escapeHtml(t.id)}">Sposta</button><button type="button" class="admin-danger" data-admin-delete-thread="${escapeHtml(t.id)}">Elimina</button></div>
+  </div>`).join('') || '<p class="muted">Nessun contenuto trovato.</p>';
+  bindAdminThreadShortcutButtons(host);
+}
+async function loadAdminUsers(){
+  const { data, error } = await db.from('profiles').select('id,display_name,username,role,user_group,is_artist,last_seen_at,created_at,profile_extra,artist_profile').order('created_at',{ascending:false}).limit(300);
+  if(error){ toast(error.message); return; }
+  state.adminUsers = data || [];
+}
+function renderAdminUsers(){
+  const host=$('adminUsersList'); if(!host) return;
+  const q=($('adminUserSearch')?.value||'').toLowerCase().trim();
+  let rows=[...state.adminUsers];
+  if(q) rows=rows.filter(u=>`${u.display_name} ${u.username} ${u.role} ${u.user_group}`.toLowerCase().includes(q));
+  const groups=['visitatore','ascoltatore','critico','scrittore','artist'];
+  host.innerHTML=rows.map(u=>`<div class="admin-row">
+    <div><h4>${escapeHtml(u.display_name||u.username||'Utente')}</h4><p>@${escapeHtml(u.username||'—')} · ruolo: ${escapeHtml(u.role||'user')} · gruppo: ${escapeHtml(u.user_group||'visitatore')} ${u.is_artist?'· artista verificato':''}</p><span class="user-group-note">Auto: ascoltatore ≥10 Sound Cards aperte; critico ≥20 commenti a post altrui; scrittore ≥50 discussioni. Artista è manuale.</span></div>
+    <div class="admin-row-actions">
+      <select data-user-group="${escapeHtml(u.id)}">${groups.map(g=>`<option value="${g}" ${String(u.user_group||'')===g?'selected':''}>${g}</option>`).join('')}</select>
+      <button type="button" data-toggle-artist="${escapeHtml(u.id)}">${u.is_artist?'Togli artista':'Rendi artista'}</button>
+      <button type="button" data-make-admin="${escapeHtml(u.id)}">Admin</button>
+    </div>
+  </div>`).join('') || '<p class="muted">Nessun utente.</p>';
+  host.querySelectorAll('[data-user-group]').forEach(sel=>sel.addEventListener('change',()=>adminSetUserGroup(sel.dataset.userGroup, sel.value)));
+  host.querySelectorAll('[data-toggle-artist]').forEach(btn=>btn.addEventListener('click',()=>adminToggleArtist(btn.dataset.toggleArtist)));
+  host.querySelectorAll('[data-make-admin]').forEach(btn=>btn.addEventListener('click',()=>adminMakeAdmin(btn.dataset.makeAdmin)));
+}
+async function adminSetUserGroup(id, group){
+  if(!isAdmin()) return;
+  const patch = group==='artist' ? {user_group:'artist', is_artist:true} : {user_group:group, is_artist:false};
+  const { error } = await db.from('profiles').update(patch).eq('id',id); if(error) return toast(error.message);
+  await loadAdminUsers(); renderAdminUsers(); toast('Gruppo aggiornato.');
+}
+async function adminToggleArtist(id){
+  const u=state.adminUsers.find(x=>x.id===id); if(!u) return;
+  const patch = {is_artist:!u.is_artist, user_group:!u.is_artist?'artist':'visitatore'};
+  const { error } = await db.from('profiles').update(patch).eq('id',id); if(error) return toast(error.message);
+  await loadAdminUsers(); renderAdminUsers(); toast('Stato artista aggiornato.');
+}
+async function adminMakeAdmin(id){
+  if(!confirm('Dare ruolo admin a questo utente?')) return;
+  const { error } = await db.from('profiles').update({role:'admin'}).eq('id',id); if(error) return toast(error.message);
+  await loadAdminUsers(); renderAdminUsers(); toast('Utente promosso admin.');
+}
+async function recalcAllGroups(){
+  const { error } = await db.rpc('recalculate_all_user_groups');
+  if(error) return toast(error.message);
+  await loadAdminUsers(); renderAdminUsers(); toast('Gruppi automatici ricalcolati.');
+}
+function renderAdminCategories(){
+  const host=$('adminCategoriesList'); if(!host) return;
+  host.innerHTML=state.categories.filter(c=>!isReservedCategory(c)).map(c=>`<div class="admin-row">
+    <div><h4>${escapeHtml(c.icon||'◆')} ${escapeHtml(c.name)}</h4><p>${escapeHtml(c.slug)} · ordine ${c.sort_order ?? '—'} · ${escapeHtml(c.description||'')}</p></div>
+    <div class="admin-row-actions"><button type="button" data-edit-category="${escapeHtml(c.id)}">Modifica</button><button type="button" class="admin-danger" data-delete-category="${escapeHtml(c.id)}">Elimina</button></div>
+  </div>`).join('');
+  host.querySelectorAll('[data-edit-category]').forEach(b=>b.addEventListener('click',()=>adminEditCategory(b.dataset.editCategory)));
+  host.querySelectorAll('[data-delete-category]').forEach(b=>b.addEventListener('click',()=>adminDeleteCategory(b.dataset.deleteCategory)));
+}
+async function adminCreateCategory(e){
+  e.preventDefault(); if(!isAdmin()) return;
+  const payload={name:getInputValue('adminCategoryName'), slug:getInputValue('adminCategorySlug').toLowerCase(), icon:getInputValue('adminCategoryIcon')||'◆', sort_order:Number(getInputValue('adminCategorySort')||50), description:'Categoria creata dal pannello admin.'};
+  const { error } = await db.from('categories').insert(payload); if(error) return toast(error.message);
+  $('adminCategoryForm')?.reset(); await loadCategories(); renderAdminCategories(); renderAdminCategoryFilter(); toast('Categoria creata.');
+}
+async function adminEditCategory(id){
+  const c=state.categories.find(x=>x.id===id); if(!c) return;
+  const name=prompt('Nome categoria:', c.name); if(name===null) return;
+  const desc=prompt('Descrizione:', c.description||''); if(desc===null) return;
+  const { error } = await db.from('categories').update({name:name.trim(), description:desc.trim()}).eq('id',id); if(error) return toast(error.message);
+  await loadCategories(); renderAdminCategories(); renderCategories(); toast('Categoria aggiornata.');
+}
+async function adminDeleteCategory(id){
+  if(!confirm('Eliminare categoria? Fallirà se contiene discussioni protette da vincoli.')) return;
+  const { error } = await db.from('categories').delete().eq('id',id); if(error) return toast(error.message);
+  await loadCategories(); renderAdminCategories(); renderCategories(); toast('Categoria eliminata.');
+}
+async function loadAdminBlocksForPanel(){
+  const { data } = await db.from('admin_blocks').select('*').order('created_at',{ascending:false}).limit(100);
+  state.adminBlocksCache = data || [];
+}
+function renderAdminBlocksPanel(){
+  const host=$('adminBlocksList'); if(!host) return;
+  host.innerHTML=(state.adminBlocksCache||[]).map(b=>`<div class="admin-row"><div><h4>${escapeHtml(b.title||'Blocco')}</h4><p>${escapeHtml(b.location||'')} · ${b.is_active?'attivo':'disattivato'}</p></div><div class="admin-row-actions"><button type="button" data-toggle-block="${escapeHtml(b.id)}">${b.is_active?'Disattiva':'Attiva'}</button><button type="button" class="admin-danger" data-delete-block="${escapeHtml(b.id)}">Elimina</button></div></div>`).join('') || '<p class="muted">Nessun blocco salvato.</p>';
+  host.querySelectorAll('[data-toggle-block]').forEach(btn=>btn.addEventListener('click',()=>adminToggleBlock(btn.dataset.toggleBlock)));
+  host.querySelectorAll('[data-delete-block]').forEach(btn=>btn.addEventListener('click',()=>adminDeleteBlock(btn.dataset.deleteBlock)));
+}
+async function adminToggleBlock(id){ const b=state.adminBlocksCache.find(x=>x.id===id); if(!b)return; const {error}=await db.from('admin_blocks').update({is_active:!b.is_active}).eq('id',id); if(error)return toast(error.message); await loadAdminBlocksForPanel(); renderAdminBlocksPanel(); await loadAdminBlocks(); }
+async function adminDeleteBlock(id){ if(!confirm('Eliminare blocco HTML/CSS?'))return; const {error}=await db.from('admin_blocks').delete().eq('id',id); if(error)return toast(error.message); await loadAdminBlocksForPanel(); renderAdminBlocksPanel(); await loadAdminBlocks(); }
+async function loadAdminRules(){
+  const { data } = await db.from('site_settings').select('*').eq('key','rules').maybeSingle();
+  const v=data?.value || {}; setInputValue('siteRulesTitle', v.title||'Regolamento INC. Forum'); setInputValue('siteRulesBody', v.body||'');
+}
+async function adminSaveRules(e){
+  e.preventDefault(); if(!isAdmin()) return;
+  const value={title:getInputValue('siteRulesTitle'), body:getInputValue('siteRulesBody'), updated_at:new Date().toISOString()};
+  const { error } = await db.from('site_settings').upsert({key:'rules', value}, {onConflict:'key'}); if(error) return toast(error.message);
+  toast('Regole salvate.');
+}
+
+const _bindV3EventsV34Base = bindV3Events;
+bindV3Events = function(){
+  _bindV3EventsV34Base();
+  bindAdminControlEvents();
+};
+
+
 init();

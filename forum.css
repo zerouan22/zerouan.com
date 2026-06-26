@@ -266,3 +266,41 @@ body{background:radial-gradient(circle at 14% 10%,rgba(139,44,255,.30),transpare
 .forum-signature{margin-top:18px;padding-top:14px;border-top:1px dashed rgba(255,255,255,.13);color:var(--soft);font-size:12px;line-height:1.45;white-space:pre-wrap}
 @media(max-width:980px){.classic-thread-post,.classic-reply-post{grid-template-columns:1fr!important}.classic-thread-post>.thread-head,.classic-thread-post>.thread-body,.classic-thread-post>.media-grid{grid-column:1}.forum-user-card{position:relative;top:auto;align-items:flex-start;text-align:left}.forum-user-card .author-avatar.xl{width:58px;height:58px}.forum-user-chips{justify-content:flex-start}.profile-extra-grid{grid-template-columns:1fr!important}}
 @media(max-width:560px){.classic-thread-post,.classic-reply-post{padding:16px!important}.category-meta em{display:none}.forum-user-card{padding:14px}}
+
+/* ===================== INC FORUM V3.4: admin control, reactions, groups ===================== */
+.admin-control-modal{width:min(1180px,calc(100vw - 28px));}
+.admin-control-card{max-height:92vh;overflow:auto;padding:28px;}
+.admin-control-head{display:flex;justify-content:space-between;gap:22px;align-items:flex-start;margin-bottom:22px;}
+.admin-control-head h2{margin:.1rem 0 .45rem;font-size:clamp(1.8rem,4vw,3.2rem);line-height:.96;letter-spacing:-.055em;text-transform:uppercase;}
+.admin-tabs{display:flex;gap:8px;flex-wrap:wrap;padding:8px;margin:16px 0 18px;border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:16px;}
+.admin-tab{border:0;border-radius:12px;background:transparent;color:var(--muted);padding:11px 14px;font-weight:900;}
+.admin-tab.active{background:linear-gradient(135deg,rgba(139,44,255,.26),rgba(72,215,255,.12));color:var(--text);}
+.admin-tab-panel{display:none;}
+.admin-tab-panel.active{display:block;}
+.admin-panel-toolbar,.admin-inline-form{display:grid;grid-template-columns:minmax(180px,1fr) minmax(180px,.6fr) auto;gap:10px;margin-bottom:14px;align-items:end;}
+.admin-inline-form{grid-template-columns:1.1fr 1fr .35fr .35fr auto;}
+.admin-panel-toolbar input,.admin-panel-toolbar select,.admin-inline-form input,.admin-rules-form input,.admin-rules-form textarea,.admin-list input,.admin-list select,.admin-list textarea{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);border-radius:12px;padding:11px 12px;outline:0;}
+.admin-list{display:grid;gap:10px;}
+.admin-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.035);padding:14px;}
+.admin-row h4{margin:0 0 5px;font-size:1rem;}
+.admin-row p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.4;}
+.admin-row-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.admin-row-actions button,.admin-row-actions select{min-height:36px;border-radius:10px;}
+.admin-danger{border:1px solid rgba(255,77,103,.45)!important;color:#ffd1d7!important;background:rgba(255,77,103,.09)!important;}
+.admin-warn{border:1px solid rgba(255,184,77,.45)!important;color:#ffe0b5!important;background:rgba(255,184,77,.08)!important;}
+.embedded-admin-form{border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.16);border-radius:18px;padding:18px;margin-bottom:14px;}
+.admin-rules-form{display:grid;gap:12px;}
+.thread-admin-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px;}
+.thread-admin-actions button{border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);border-radius:10px;padding:7px 9px;font-size:.78rem;font-weight:900;}
+.reaction-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;}
+.reaction-btn{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);color:var(--muted);border-radius:999px;padding:7px 10px;font-weight:900;font-size:.82rem;}
+.reaction-btn:hover,.reaction-btn.active{color:var(--text);border-color:rgba(139,44,255,.45);background:rgba(139,44,255,.14);}
+.thread-item .reaction-bar{margin-top:10px;}
+.thread-item .reaction-btn{padding:5px 8px;font-size:.75rem;}
+.group-badge{background:rgba(72,215,255,.16);color:#c9f5ff;border:1px solid rgba(72,215,255,.28);}
+.group-badge.artist-badge{background:rgba(30,215,96,.14);color:#d9ffe8;border-color:rgba(30,215,96,.30);}
+.group-badge.scrittore{background:rgba(255,184,77,.14);color:#ffe1b5;border-color:rgba(255,184,77,.30);}
+.group-badge.critico{background:rgba(184,50,255,.14);color:#f1d3ff;border-color:rgba(184,50,255,.30);}
+.group-badge.ascoltatore{background:rgba(72,215,255,.14);color:#c9f5ff;border-color:rgba(72,215,255,.30);}
+.user-group-note{font-size:.72rem;color:var(--muted);display:block;margin-top:6px;}
+@media(max-width:900px){.admin-control-head,.admin-row{grid-template-columns:1fr;display:grid}.admin-panel-toolbar,.admin-inline-form{grid-template-columns:1fr}.admin-row-actions{justify-content:flex-start}.admin-control-card{padding:18px}.admin-control-head h2{font-size:2rem}}
