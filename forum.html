@@ -15,7 +15,7 @@
   <div class="site-bg"></div>
 
   <header class="topbar">
-    <a class="brand" href="forum.html" aria-label="Homepage">
+    <a class="brand" href="index.html" aria-label="Vai alla homepage Zerouan INC.">
       <span class="brand-mark">Z</span>
       <span class="brand-text">INC. Forum</span>
     </a>
@@ -23,13 +23,12 @@
     <nav class="main-nav" aria-label="Navigazione principale">
       <a class="active" href="forum.html" id="navForum">Forum</a>
       <a href="#sound-cards" id="navSoundCards">Sound Cards</a>
-      <a href="admin.html" id="navAdmin">Fast Admin</a>
-      <a href="admin.html">Control Panel</a>
+      <a href="#admin" id="navAdmin" class="hidden">Admin</a>
       <!--<a href="guide.html">Guide</a>
       <a href="blog.html">Blog</a>
       <a href="risorse.html">Risorse</a>
       <a href="shop.html">Shop</a>-->
-      <a href="index.html">Sito</a>
+      <a href="index.html">Chi siamo</a>
     </nav>
 
     <div class="top-actions">
@@ -106,7 +105,7 @@
           <button type="button" id="quickPhotoBtn">📷 Foto</button>
           <button type="button" id="quickVideoBtn">▶️ Video</button>
           <button type="button" id="quickLinkBtn">🔗 Link</button>
-          <button type="button" id="quickMusicBtn">🎵 Sound Card</button>
+          <button type="button" id="quickMusicBtn">🎵 Brano / progetto</button>
         </div>
       </div>
 
@@ -276,7 +275,16 @@
       </div>
       <h3>Profilo forum</h3>
       <div class="links-grid profile-extra-grid">
+        <label>Categoria profilo<select id="profileKind">
+          <option value="general">Generale</option>
+          <option value="artist">Artista / musicista</option>
+          <option value="writer">Scrittore</option>
+          <option value="scientist">Scienziato / ricercatore</option>
+          <option value="gamer">Gamer</option>
+          <option value="developer">Developer</option>
+        </select></label>
         <label>Titolo personale<input id="profileHeadline" type="text" maxlength="90" placeholder="Es. Producer, microbiologo, visual designer..." /></label>
+        <label>Banner profilo<input id="profileBannerUrl" type="url" maxlength="400" placeholder="https://... immagine banner" /></label>
         <label>Località / scena<input id="profileLocation" type="text" maxlength="80" placeholder="Es. Abruzzo, Roma, UK underground..." /></label>
         <label>Firma forum<textarea id="profileSignature" rows="3" maxlength="360" placeholder="Firma che apparirà sotto i tuoi post."></textarea></label>
         <label>Interessi<input id="profileInterests" type="text" maxlength="180" placeholder="Musica, mix, microbiologia, video, web..." /></label>
@@ -294,6 +302,37 @@
         <label>Ultima release<input id="artistLatestRelease" type="text" maxlength="140" placeholder="Titolo + anno/link breve" /></label>
         <label>Bio artista<textarea id="artistBio" rows="3" maxlength="420" placeholder="Descrizione artistica più specifica."></textarea></label>
       </div>
+
+      <section class="profile-role-box" data-profile-panel="extended">
+        <h3>Campi per categorie / ruoli</h3>
+        <div class="links-grid profile-extra-grid">
+          <label>Strumenti musicali<input id="artistInstruments" maxlength="180" placeholder="Chitarra, synth, microfono..." /></label>
+          <label>DAW / software musicale<input id="artistDaw" maxlength="120" placeholder="Ableton Live, FL Studio, Logic..." /></label>
+          <label>Album preferiti<input id="artistAlbums" maxlength="220" placeholder="Titolo - artista, titolo - artista..." /></label>
+          <label>Artisti influenti<input id="artistInfluential" maxlength="260" placeholder="Nome | immagine | link" /></label>
+          <label>Influenze letterarie<input id="writerInfluences" maxlength="220" placeholder="Calvino, Le Guin, Borges..." /></label>
+          <label>Autori preferiti<input id="writerAuthors" maxlength="220" placeholder="Autore, autore, autore..." /></label>
+          <label>Generi letterari<input id="writerGenres" maxlength="180" placeholder="Sci-fi, noir, poesia..." /></label>
+          <label>Opere pubblicate<input id="writerWorks" maxlength="260" placeholder="Titolo, rivista, link..." /></label>
+          <label>Campo di ricerca<input id="scienceField" maxlength="180" placeholder="Microbiologia, AI, chimica..." /></label>
+          <label>Tecniche / lab skills<input id="scienceTechniques" maxlength="220" placeholder="PCR, colture, microscopia..." /></label>
+          <label>ORCID<input id="scienceOrcid" maxlength="80" placeholder="0000-0000-0000-0000" /></label>
+          <label>Google Scholar<input id="scienceScholar" type="url" maxlength="400" placeholder="https://scholar.google.com/..." /></label>
+          <label>Piattaforme gaming<input id="gamerPlatforms" maxlength="180" placeholder="PC, PlayStation, Switch..." /></label>
+          <label>Giochi preferiti<input id="gamerGames" maxlength="260" placeholder="Gioco, gioco, gioco..." /></label>
+          <label>Nickname gamer<input id="gamerNickname" maxlength="80" placeholder="ID / gamertag" /></label>
+          <label>Linguaggi dev<input id="devLanguages" maxlength="220" placeholder="JS, Python, SQL..." /></label>
+          <label>Framework dev<input id="devFrameworks" maxlength="220" placeholder="React, Astro, Supabase..." /></label>
+          <label>GitHub dev<input id="devGithub" type="url" maxlength="400" placeholder="https://github.com/..." /></label>
+          <label>Portfolio dev<input id="devPortfolio" type="url" maxlength="400" placeholder="https://..." /></label>
+        </div>
+        <div class="external-search-box">
+          <label>Cerca libro<input id="bookSearchInput" type="search" placeholder="Cerca su Open Library: titolo, autore..." /></label>
+          <button id="bookSearchBtn" class="tool-btn" type="button">Cerca libri</button>
+          <div id="bookResults" class="external-results" aria-live="polite"></div>
+          <div id="savedBooks" class="saved-external-cards"></div>
+        </div>
+      </section>
 
       <h3>Link social / musicali</h3>
       <div class="links-grid">
@@ -321,10 +360,49 @@
   <dialog id="threadDialog" class="modal">
     <form class="modal-card composer-real" id="threadForm">
       <button class="close-btn" type="button" id="closeThreadBtn">×</button>
-      <h2>Nuova discussione</h2>
+      <div class="composer-pro-head">
+        <div>
+          <p class="eyebrow">Nuova discussione</p>
+          <h2>Apri un thread</h2>
+          <p class="muted small">Titolo chiaro, categoria giusta, testo leggibile. Il salvataggio bozza resta sul tuo browser.</p>
+        </div>
+        <label class="status-toggle">Stato<select id="threadStatus"><option value="public">Pubblico</option><option value="draft">Bozza</option></select></label>
+      </div>
       <label>Titolo<input id="newTitle" type="text" maxlength="120" placeholder="Titolo chiaro e specifico" required /></label>
+      <div class="field-helper"><span id="titleCounter">0/120</span><span id="titleValidation">Minimo 4 caratteri.</span></div>
       <label>Categoria<select id="newCategory" required></select></label>
+      <label>Tag<input id="newTags" type="text" maxlength="180" placeholder="mix, feedback, release (separati da virgola o #tag)" /></label>
+      <div class="composer-toolbar" aria-label="Toolbar formattazione">
+        <button type="button" data-format="bold">B</button>
+        <button type="button" data-format="italic">I</button>
+        <button type="button" data-format="quote">Quote</button>
+        <button type="button" data-format="code">Code</button>
+        <button type="button" data-format="list">Lista</button>
+        <button type="button" data-format="link">Link</button>
+        <button type="button" data-format="spoiler">Spoiler</button>
+        <button type="button" data-format="image">Img</button>
+      </div>
       <label>Testo<textarea id="newBody" rows="8" maxlength="6000" placeholder="Scrivi il contenuto. Puoi aggiungere foto, link, video YouTube/Vimeo, Spotify o SoundCloud." required></textarea></label>
+      <div class="field-helper"><span id="bodyCounter">0/6000</span><span id="draftStatus">Bozza non salvata</span></div>
+      <div class="composer-side-pane">
+        <section class="rules-box">
+          <h3>Regole rapide</h3>
+          <ul>
+            <li>Scegli una categoria coerente.</li>
+            <li>Niente spam, dati privati o contenuti offensivi.</li>
+            <li>Per promozioni usa una sezione adatta.</li>
+            <li>Link e immagini passano da controlli anti-spam.</li>
+          </ul>
+        </section>
+        <section class="link-preview-box" id="linkPreviewBox">
+          <h3>Link preview</h3>
+          <p class="muted small">Aggiungi un link per vedere qui la sorgente riconosciuta.</p>
+        </section>
+        <section class="post-preview-box">
+          <h3>Anteprima live</h3>
+          <article id="threadLivePreview" class="live-preview-card"></article>
+        </section>
+      </div>
       <div id="threadMediaPreview" class="media-preview"></div>
       <div class="composer-tools">
         <label class="tool-btn">📷 Foto<input id="threadFiles" type="file" accept="image/*" multiple hidden></label>
@@ -334,7 +412,8 @@
       <p class="muted small">Limite consigliato: immagini leggere. Per video pesanti usa link YouTube/Vimeo: Supabase free non va trattato come archivio video illimitato.</p>
       <div class="modal-actions">
         <button class="secondary-btn" type="button" id="cancelThreadBtn">Annulla</button>
-        <button class="primary-btn" type="submit">Pubblica</button>
+        <button class="secondary-btn" type="button" id="saveDraftBtn">Salva bozza</button>
+        <button class="primary-btn" type="submit" id="publishThreadBtn">Pubblica</button>
       </div>
       <p id="threadMessage" class="form-message"></p>
     </form>

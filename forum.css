@@ -809,3 +809,276 @@ body[data-theme="light"] .group-badge.visitatore{
   background:rgba(100,116,139,.12);
   border-color:rgba(100,116,139,.22);
 }
+
+/* ===================== V4 composer, previews and role profile cards ===================== */
+#threadDialog{
+  width:min(1120px,calc(100vw - 24px));
+}
+
+#threadForm.composer-real{
+  display:grid;
+  gap:16px;
+}
+
+.composer-pro-head{
+  display:flex;
+  justify-content:space-between;
+  gap:18px;
+  align-items:flex-start;
+  padding-right:38px;
+}
+
+.composer-pro-head h2{
+  margin:.1rem 0 .35rem;
+  font-size:clamp(2rem,4vw,3.35rem);
+  line-height:.92;
+  letter-spacing:-.055em;
+  text-transform:uppercase;
+}
+
+.status-toggle{
+  min-width:170px;
+  margin:0!important;
+}
+
+.field-helper{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin:-8px 0 4px;
+  color:var(--soft);
+  font-size:12px;
+  font-weight:800;
+}
+
+.composer-toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  padding:10px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+}
+
+.composer-toolbar button{
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  padding:8px 10px;
+  font-weight:950;
+  min-width:38px;
+}
+
+.composer-side-pane{
+  display:grid;
+  grid-template-columns:1fr 1fr 1.25fr;
+  gap:12px;
+  align-items:stretch;
+}
+
+.rules-box,
+.link-preview-box,
+.post-preview-box,
+.external-search-box{
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:16px;
+  background:rgba(255,255,255,.035);
+  padding:14px;
+  min-width:0;
+}
+
+.rules-box h3,
+.link-preview-box h3,
+.post-preview-box h3,
+.profile-role-box h3{
+  margin:0 0 10px;
+  font-size:14px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.rules-box ul{
+  margin:0;
+  padding-left:18px;
+  color:var(--muted);
+  line-height:1.55;
+  font-size:13px;
+}
+
+.link-preview-box a{
+  display:block;
+  color:#d9fff0;
+  overflow-wrap:anywhere;
+  font-weight:850;
+}
+
+.live-preview-card{
+  display:grid;
+  gap:8px;
+  min-height:132px;
+  border-radius:12px;
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.07);
+  padding:12px;
+}
+
+.live-preview-card h4{
+  margin:0;
+  font-size:16px;
+  overflow-wrap:anywhere;
+}
+
+.preview-body{
+  color:var(--muted);
+  line-height:1.55;
+  overflow-wrap:anywhere;
+}
+
+.preview-body blockquote{
+  margin:8px 0;
+  padding:8px 10px;
+  border-left:3px solid var(--purple);
+  background:rgba(139,44,255,.10);
+  border-radius:8px;
+}
+
+.preview-body code{
+  background:rgba(255,255,255,.09);
+  border-radius:6px;
+  padding:2px 5px;
+}
+
+.preview-tags,
+.saved-external-cards,
+.external-results{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.preview-tags span{
+  border:1px solid rgba(72,215,255,.22);
+  background:rgba(72,215,255,.10);
+  color:#d4f7ff;
+  border-radius:999px;
+  padding:5px 8px;
+  font-size:12px;
+  font-weight:850;
+}
+
+.profile-role-box{
+  margin-top:18px;
+  padding:16px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  background:rgba(255,255,255,.03);
+}
+
+.external-search-box{
+  display:grid;
+  gap:12px;
+  margin-top:12px;
+}
+
+.external-card{
+  display:grid;
+  grid-template-columns:54px minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  width:100%;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:14px;
+  background:rgba(0,0,0,.14);
+  padding:10px;
+}
+
+.external-card img,
+.external-cover{
+  width:54px;
+  height:76px;
+  border-radius:9px;
+  object-fit:cover;
+  background:linear-gradient(135deg,var(--purple),var(--cyan));
+}
+
+.external-card strong,
+.external-card p,
+.external-card a{
+  display:block;
+  margin:0;
+  overflow-wrap:anywhere;
+}
+
+.external-card p{
+  color:var(--muted);
+  font-size:12px;
+}
+
+.external-card button{
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  padding:8px 10px;
+  font-weight:850;
+}
+
+body[data-theme="light"] .composer-toolbar,
+body[data-theme="light"] .rules-box,
+body[data-theme="light"] .link-preview-box,
+body[data-theme="light"] .post-preview-box,
+body[data-theme="light"] .profile-role-box,
+body[data-theme="light"] .external-search-box,
+body[data-theme="light"] .external-card,
+body[data-theme="light"] .live-preview-card{
+  background:rgba(255,255,255,.72);
+  border-color:var(--line);
+}
+
+body[data-theme="light"] .composer-toolbar button,
+body[data-theme="light"] .external-card button{
+  background:#fff;
+  color:var(--text);
+  border-color:var(--line);
+}
+
+body[data-theme="light"] .link-preview-box a{
+  color:#225ec5;
+}
+
+@media(max-width:900px){
+  .composer-pro-head,
+  .composer-side-pane{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  .status-toggle{
+    min-width:0;
+  }
+
+  .external-card{
+    grid-template-columns:48px minmax(0,1fr);
+  }
+
+  .external-card button{
+    grid-column:1/-1;
+  }
+}
+
+@media(max-width:560px){
+  #threadForm.composer-real{
+    padding:18px;
+  }
+
+  .composer-pro-head h2{
+    font-size:2rem;
+  }
+
+  .field-helper{
+    flex-direction:column;
+    gap:4px;
+  }
+}

@@ -1890,5 +1890,399 @@ adminSaveRules = async function(e) {
   }
 };
 
+/* ===================== INC FORUM V4: PRO COMPOSER + ROLE PROFILES ===================== */
+const THREAD_DRAFT_KEY = 'incForumThreadDraftV4';
+
+function manualTagsFromInput() {
+  const input = $('newTags');
+  if (!input) return [];
+  return String(input.value || '')
+    .split(/[,\s]+/)
+    .map(tag => tag.replace(/^#/, '').trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function mergedThreadTags(title, body) {
+  return [...new Set([...manualTagsFromInput(), ...extractTags(`${title} ${body}`)])].slice(0, 12);
+}
+
+function markdownLite(text = '') {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\n/g, '<br>');
+}
+
+function updateComposerCounters() {
+  const title = $('newTitle')?.value || '';
+  const body = $('newBody')?.value || '';
+  if ($('titleCounter')) $('titleCounter').textContent = `${title.length}/120`;
+  if ($('bodyCounter')) $('bodyCounter').textContent = `${body.length}/6000`;
+  if ($('titleValidation')) $('titleValidation').textContent = title.trim().length >= 4 ? 'Titolo valido.' : 'Minimo 4 caratteri.';
+  const preview = $('threadLivePreview');
+  if (preview) {
+    const tags = mergedThreadTags(title, body);
+    preview.innerHTML = `
+      <h4>${escapeHtml(title.trim() || 'Titolo della discussione')}</h4>
+      <p class="muted small">${escapeHtml(categoryById($('newCategory')?.value)?.name || 'Categoria')}</p>
+      <div class="preview-body">${markdownLite(body.trim() || 'Il testo apparira qui mentre scrivi.')}</div>
+      <div class="preview-tags">${tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}</div>
+    `;
+  }
+  const firstUrl = body.match(/https?:\/\/[^\s)]+/)?.[0] || '';
+  const linkPreview = $('linkPreviewBox');
+  if (linkPreview) {
+    linkPreview.innerHTML = firstUrl
+      ? `<h3>Link preview</h3><a href="${escapeHtml(safeUrl(firstUrl))}" target="_blank" rel="noopener">${escapeHtml(firstUrl)}</a><p class="muted small">${escapeHtml(mediaKind(firstUrl))}</p>`
+      : '<h3>Link preview</h3><p class="muted small">Aggiungi un link per vedere qui la sorgente riconosciuta.</p>';
+  }
+}
+
+function saveThreadDraft(silent = false) {
+  const payload = {
+    title: $('newTitle')?.value || '',
+    category_id: $('newCategory')?.value || '',
+    tags: $('newTags')?.value || '',
+    body: $('newBody')?.value || '',
+    media: state.threadMedia || [],
+    updated_at: new Date().toISOString()
+  };
+  localStorage.setItem(THREAD_DRAFT_KEY, JSON.stringify(payload));
+  if ($('draftStatus')) $('draftStatus').textContent = 'Bozza salvata in questo browser.';
+  if (!silent) toast('Bozza salvata.');
+}
+
+function restoreThreadDraft() {
+  try {
+    const raw = localStorage.getItem(THREAD_DRAFT_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    if (draft.title && $('newTitle')) $('newTitle').value = draft.title;
+    if (draft.category_id && $('newCategory')) $('newCategory').value = draft.category_id;
+    if (draft.tags && $('newTags')) $('newTags').value = draft.tags;
+    if (draft.body && $('newBody')) $('newBody').value = draft.body;
+    state.threadMedia = Array.isArray(draft.media) ? draft.media.filter(item => item.type !== 'image_pending') : [];
+    renderMediaPreview('thread');
+    if ($('draftStatus')) $('draftStatus').textContent = draft.updated_at ? `Bozza recuperata: ${fmtDate(draft.updated_at)}` : 'Bozza recuperata.';
+    updateComposerCounters();
+  } catch {
+    localStorage.removeItem(THREAD_DRAFT_KEY);
+  }
+}
+
+function insertAtCursor(textarea, before, after = '') {
+  if (!textarea) return;
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const selected = textarea.value.slice(start, end);
+  textarea.value = textarea.value.slice(0, start) + before + selected + after + textarea.value.slice(end);
+  textarea.focus();
+  textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+  updateComposerCounters();
+}
+
+function applyComposerFormat(kind) {
+  const body = $('newBody');
+  const map = {
+    bold: ['**', '**'],
+    italic: ['*', '*'],
+    quote: ['> ', ''],
+    code: ['`', '`'],
+    list: ['\n- ', ''],
+    link: ['[testo](', ')'],
+    spoiler: ['[spoiler]', '[/spoiler]'],
+    image: ['![descrizione](', ')']
+  };
+  const pair = map[kind];
+  if (pair) insertAtCursor(body, pair[0], pair[1]);
+}
+
+function bindProComposerEvents() {
+  ['newTitle', 'newBody', 'newTags', 'newCategory'].forEach(id => $(id)?.addEventListener('input', () => {
+    updateComposerCounters();
+    saveThreadDraft(true);
+  }));
+  $('saveDraftBtn')?.addEventListener('click', () => saveThreadDraft(false));
+  document.querySelectorAll('.composer-toolbar [data-format]').forEach(btn => {
+    btn.addEventListener('click', () => applyComposerFormat(btn.dataset.format));
+  });
+  $('profileKind')?.addEventListener('change', renderProfileKindPanels);
+  $('bookSearchBtn')?.addEventListener('click', searchBooksForProfile);
+}
+
+const _openThreadComposerV4Base = openThreadComposer;
+openThreadComposer = function(sourceId) {
+  state.suppressDraftSave = true;
+  _openThreadComposerV4Base(sourceId);
+  state.suppressDraftSave = false;
+  restoreThreadDraft();
+  updateComposerCounters();
+};
+
+const _addLinkMediaV4Base = addLinkMedia;
+addLinkMedia = function(e) {
+  _addLinkMediaV4Base(e);
+  updateComposerCounters();
+  saveThreadDraft(true);
+};
+
+const _renderMediaPreviewV4Base = renderMediaPreview;
+renderMediaPreview = function(target) {
+  _renderMediaPreviewV4Base(target);
+  if (target === 'thread' && !state.suppressDraftSave) saveThreadDraft(true);
+};
+
+createThread = async function(e) {
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  const title = els.newTitle.value.trim();
+  const body = els.newBody.value.trim();
+  if (title.length < 4) {
+    els.threadMessage.textContent = 'Inserisci un titolo piu chiaro: almeno 4 caratteri.';
+    return;
+  }
+  if (body.length < 2) {
+    els.threadMessage.textContent = 'Scrivi un testo prima di pubblicare.';
+    return;
+  }
+  if ($('threadStatus')?.value === 'draft') {
+    saveThreadDraft(false);
+    els.threadMessage.textContent = 'Bozza salvata localmente. Cambia stato in Pubblico per pubblicare.';
+    return;
+  }
+  const cat = categoryById(els.newCategory.value);
+  if (!canCreateInCategory(cat)) {
+    els.threadMessage.textContent = 'Non puoi pubblicare in questa sezione.';
+    return;
+  }
+  els.threadMessage.textContent = 'Controllo sicurezza e pubblicazione via Edge Function...';
+  try {
+    const media = await uploadPendingMedia('thread');
+    const response = await forumApi('create-thread', {
+      category_id: els.newCategory.value,
+      title,
+      body,
+      media_items: media,
+      tags: mergedThreadTags(title, body)
+    });
+    els.threadDialog.close();
+    state.threadMedia = [];
+    localStorage.removeItem(THREAD_DRAFT_KEY);
+    await Promise.all([loadThreads(), loadCategories(), loadStats(), loadLivePanels()]);
+    toast(response?.moderation_status === 'pending' ? 'Post inviato in moderazione anti-spam.' : 'Discussione pubblicata su INC. Forum');
+  } catch (error) {
+    els.threadMessage.textContent = error.message;
+  }
+};
+
+function profilePanelsData() {
+  return {
+    artist: {
+      instruments: csvProfile('artistInstruments'),
+      daw: getInputValue('artistDaw'),
+      favorite_albums: csvProfile('artistAlbums'),
+      influential_artists: csvProfile('artistInfluential')
+    },
+    writer: {
+      influences: csvProfile('writerInfluences'),
+      authors: csvProfile('writerAuthors'),
+      genres: csvProfile('writerGenres'),
+      works: csvProfile('writerWorks'),
+      books: getSavedExternalCards('books')
+    },
+    scientist: {
+      field: getInputValue('scienceField'),
+      techniques: csvProfile('scienceTechniques'),
+      orcid: getInputValue('scienceOrcid'),
+      scholar: safeUrl(getInputValue('scienceScholar')),
+    },
+    gamer: {
+      platforms: csvProfile('gamerPlatforms'),
+      games: csvProfile('gamerGames'),
+      nickname: getInputValue('gamerNickname')
+    },
+    developer: {
+      languages: csvProfile('devLanguages'),
+      frameworks: csvProfile('devFrameworks'),
+      github: safeUrl(getInputValue('devGithub')),
+      portfolio: safeUrl(getInputValue('devPortfolio'))
+    }
+  };
+}
+
+function setCsvInput(id, value) {
+  setInputValue(id, Array.isArray(value) ? value.join(', ') : value);
+}
+
+function renderProfileKindPanels() {
+  const kind = $('profileKind')?.value || 'general';
+  document.querySelectorAll('[data-profile-panel]').forEach(panel => {
+    const panelKind = panel.dataset.profilePanel;
+    panel.hidden = !(panelKind === 'extended' || panelKind === kind);
+  });
+}
+
+function hydrateRoleProfileFields() {
+  const extra = profileExtra();
+  const roles = extra.role_profiles || {};
+  $('profileKind') && ($('profileKind').value = extra.profile_kind || publicUserGroup(state.profile) || 'general');
+  setInputValue('profileBannerUrl', extra.banner_url);
+  const artist = roles.artist || artistProfile() || {};
+  setCsvInput('artistInstruments', artist.instruments);
+  setInputValue('artistDaw', artist.daw);
+  setCsvInput('artistAlbums', artist.favorite_albums);
+  setCsvInput('artistInfluential', artist.influential_artists);
+  const writer = roles.writer || {};
+  setCsvInput('writerInfluences', writer.influences);
+  setCsvInput('writerAuthors', writer.authors);
+  setCsvInput('writerGenres', writer.genres);
+  setCsvInput('writerWorks', writer.works);
+  renderSavedExternalCards('books', writer.books || []);
+  const scientist = roles.scientist || {};
+  setInputValue('scienceField', scientist.field);
+  setCsvInput('scienceTechniques', scientist.techniques);
+  setInputValue('scienceOrcid', scientist.orcid);
+  setInputValue('scienceScholar', scientist.scholar);
+  const gamer = roles.gamer || {};
+  setCsvInput('gamerPlatforms', gamer.platforms);
+  setCsvInput('gamerGames', gamer.games);
+  setInputValue('gamerNickname', gamer.nickname);
+  const developer = roles.developer || {};
+  setCsvInput('devLanguages', developer.languages);
+  setCsvInput('devFrameworks', developer.frameworks);
+  setInputValue('devGithub', developer.github);
+  setInputValue('devPortfolio', developer.portfolio);
+  renderProfileKindPanels();
+}
+
+const _openProfileEditorV4Base = openProfileEditor;
+openProfileEditor = function() {
+  _openProfileEditorV4Base();
+  hydrateRoleProfileFields();
+};
+
+saveProfile = async function(e) {
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  els.profileMessage.textContent = 'Salvataggio profilo via Edge Function...';
+  try {
+    let avatar_url = state.profile?.avatar_url || null;
+    const file = els.avatarFile.files[0];
+    if (file) {
+      const uploaded = await createSignedForumUpload(file, 'avatars');
+      avatar_url = uploaded.url;
+    }
+    const profile_extra = {
+      headline: getInputValue('profileHeadline'),
+      location: getInputValue('profileLocation'),
+      signature: getInputValue('profileSignature'),
+      interests: csvProfile('profileInterests'),
+      tools: csvProfile('profileTools'),
+      available_for: csvProfile('profileAvailableFor'),
+      profile_kind: getInputValue('profileKind') || 'general',
+      banner_url: safeUrl(getInputValue('profileBannerUrl')),
+      role_profiles: profilePanelsData()
+    };
+    const artist_profile = {
+      name: getInputValue('artistNameProfile'),
+      genres: csvProfile('artistGenres'),
+      roles: csvProfile('artistRoles'),
+      influences: csvProfile('artistInfluences'),
+      latest_release: getInputValue('artistLatestRelease'),
+      bio: getInputValue('artistBio'),
+      instruments: csvProfile('artistInstruments'),
+      daw: getInputValue('artistDaw'),
+      favorite_albums: csvProfile('artistAlbums'),
+      influential_artists: csvProfile('artistInfluential')
+    };
+    await forumApi('update-profile', {
+      display_name: els.profileDisplayName.value.trim(),
+      username: els.profileUsername.value.trim().toLowerCase() || null,
+      bio: els.profileBio.value.trim(),
+      theme: els.profileTheme.value,
+      avatar_url,
+      social_links: currentSocialLinks(),
+      profile_extra,
+      artist_profile
+    });
+    await loadProfile();
+    renderAuthState();
+    els.profileDialog.close();
+    toast('Profilo aggiornato');
+    await loadLivePanels();
+  } catch (error) {
+    els.profileMessage.textContent = error.message;
+  }
+};
+
+function getSavedExternalCards(kind) {
+  try {
+    return JSON.parse(localStorage.getItem(`incForumProfileCards:${state.user?.id || 'guest'}:${kind}`) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function setSavedExternalCards(kind, cards) {
+  localStorage.setItem(`incForumProfileCards:${state.user?.id || 'guest'}:${kind}`, JSON.stringify(cards.slice(0, 24)));
+}
+
+function renderSavedExternalCards(kind, cards = getSavedExternalCards(kind)) {
+  setSavedExternalCards(kind, cards);
+  const host = $('savedBooks');
+  if (!host) return;
+  host.innerHTML = cards.map((book, index) => `
+    <article class="external-card">
+      ${book.cover_url ? `<img src="${escapeHtml(book.cover_url)}" alt="${escapeHtml(book.title)}" loading="lazy">` : '<div class="external-cover"></div>'}
+      <div><strong>${escapeHtml(book.title)}</strong><p>${escapeHtml(book.author || '')}</p><a href="${escapeHtml(book.url)}" target="_blank" rel="noopener">Open Library</a></div>
+      <button type="button" data-remove-book="${index}">Rimuovi</button>
+    </article>
+  `).join('');
+  host.querySelectorAll('[data-remove-book]').forEach(btn => btn.addEventListener('click', () => {
+    const next = getSavedExternalCards(kind).filter((_, i) => i !== Number(btn.dataset.removeBook));
+    renderSavedExternalCards(kind, next);
+  }));
+}
+
+async function searchBooksForProfile() {
+  const q = $('bookSearchInput')?.value.trim();
+  const host = $('bookResults');
+  if (!q || !host) return;
+  host.innerHTML = '<p class="muted small">Ricerca libri in corso...</p>';
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=8`);
+    const json = await res.json();
+    const books = (json.docs || []).map(item => ({
+      title: item.title,
+      author: (item.author_name || []).slice(0, 2).join(', '),
+      cover_url: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : '',
+      url: item.key ? `https://openlibrary.org${item.key}` : 'https://openlibrary.org'
+    })).filter(book => book.title);
+    host.innerHTML = books.map((book, index) => `
+      <article class="external-card">
+        ${book.cover_url ? `<img src="${escapeHtml(book.cover_url)}" alt="${escapeHtml(book.title)}" loading="lazy">` : '<div class="external-cover"></div>'}
+        <div><strong>${escapeHtml(book.title)}</strong><p>${escapeHtml(book.author || 'Autore non indicato')}</p><a href="${escapeHtml(book.url)}" target="_blank" rel="noopener">Scheda</a></div>
+        <button type="button" data-add-book="${index}">Salva</button>
+      </article>
+    `).join('') || '<p class="muted small">Nessun risultato.</p>';
+    host.querySelectorAll('[data-add-book]').forEach(btn => btn.addEventListener('click', () => {
+      const current = getSavedExternalCards('books');
+      renderSavedExternalCards('books', [...current, books[Number(btn.dataset.addBook)]]);
+      toast('Libro salvato nel profilo.');
+    }));
+  } catch (error) {
+    host.innerHTML = `<p class="muted small">Ricerca non disponibile: ${escapeHtml(error.message)}</p>`;
+  }
+}
+
+const _bindV3EventsV4Base = bindV3Events;
+bindV3Events = function() {
+  _bindV3EventsV4Base();
+  bindProComposerEvents();
+};
+
 
 init();

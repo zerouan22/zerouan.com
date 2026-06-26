@@ -144,7 +144,45 @@ async function currentUser(req: Request) {
 
 function requireRole(profile: Record<string, unknown> | null, roles: string[]) {
   const role = String(profile?.role || "user");
+  if (role === "owner") return;
   if (!roles.includes(role)) throw new Error("FORBIDDEN");
+}
+
+function compact<T extends Record<string, unknown>>(row: T) {
+  return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== undefined)) as Partial<T>;
+}
+
+function cleanStringArray(value: unknown, max = 24, itemMax = 80) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => cleanText(item, itemMax)).filter(Boolean).slice(0, max);
+}
+
+function sanitizeProfileJson(value: unknown) {
+  const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const output: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(input)) {
+    const cleanKey = cleanText(key, 48);
+    if (!cleanKey) continue;
+    if (Array.isArray(raw)) {
+      output[cleanKey] = raw.slice(0, 40).map((item) => {
+        if (item && typeof item === "object") return sanitizeProfileJson(item);
+        return cleanText(item, 180);
+      }).filter(Boolean);
+    }
+    else if (raw && typeof raw === "object") output[cleanKey] = sanitizeProfileJson(raw);
+    else output[cleanKey] = typeof raw === "string" ? cleanText(raw, 800) : raw;
+  }
+  return output;
+}
+
+async function upsertSetting(key: string, value: unknown) {
+  const { data, error } = await admin
+    .from("site_settings")
+    .upsert({ key: cleanText(key, 80), value: value && typeof value === "object" ? value : {} }, { onConflict: "key" })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 async function logAction(actorId: string, action: string, targetType: string, targetId: string | null, payload: unknown) {
@@ -182,6 +220,52 @@ Deno.serve(async (req) => {
       return json({ data: { users: users || [], events: events || [], reports: reports || [] } });
     }
 
+    if (action === "get-admin-dashboard-complete") {
+      requireRole(profile, ["admin", "moderator"]);
+      const [
+        { data: users },
+        { data: events },
+        { data: reports },
+        { data: threads },
+        { data: posts },
+        { data: soundCards },
+        { data: notifications },
+        { data: uploads },
+        { data: blocks },
+        { data: settingsRows },
+        { data: stats },
+      ] = await Promise.all([
+        admin.from("profiles").select("*").order("created_at", { ascending: false }).limit(500),
+        admin.from("moderation_events").select("*").order("created_at", { ascending: false }).limit(250),
+        admin.from("content_reports").select("*").order("created_at", { ascending: false }).limit(250),
+        admin.from("thread_overview").select("*").order("last_activity_at", { ascending: false }).limit(500),
+        admin.from("post_overview").select("*").order("created_at", { ascending: false }).limit(500),
+        admin.from("sound_cards").select("*").order("created_at", { ascending: false }).limit(500),
+        admin.from("notifications").select("*").order("created_at", { ascending: false }).limit(250),
+        admin.from("forum_uploads").select("*").order("created_at", { ascending: false }).limit(250),
+        admin.from("admin_blocks").select("*").order("sort_order", { ascending: true }).limit(250),
+        admin.from("site_settings").select("*"),
+        admin.from("forum_stats").select("*").maybeSingle(),
+      ]);
+      const settings: Record<string, unknown> = {};
+      for (const row of settingsRows || []) settings[row.key] = row.value;
+      return json({
+        data: {
+          users: users || [],
+          events: events || [],
+          reports: reports || [],
+          threads: threads || [],
+          posts: posts || [],
+          sound_cards: soundCards || [],
+          notifications: notifications || [],
+          uploads: uploads || [],
+          admin_blocks: blocks || [],
+          settings,
+          stats: stats || {},
+        },
+      });
+    }
+
     if (action === "signed-upload") {
       const fileName = cleanText(payload.fileName, 160).replace(/[^\w.\-]+/g, "-");
       const contentType = cleanText(payload.contentType, 80);
@@ -192,6 +276,15 @@ Deno.serve(async (req) => {
       const path = `${user.id}/${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const { data, error } = await admin.storage.from(STORAGE_BUCKET).createSignedUploadUrl(path);
       if (error) throw error;
+      await admin.from("forum_uploads").insert({
+        user_id: user.id,
+        bucket: STORAGE_BUCKET,
+        path,
+        filename: fileName,
+        mime_type: contentType,
+        size_bytes: size,
+        purpose: folder,
+      });
       return json({ data: { ...data, path } });
     }
 
@@ -204,8 +297,8 @@ Deno.serve(async (req) => {
         theme: cleanText(payload.theme, 24) || "dark",
         avatar_url: safeUrl(payload.avatar_url) || null,
         social_links,
-        profile_extra: payload.profile_extra || {},
-        artist_profile: payload.artist_profile || {},
+        profile_extra: sanitizeProfileJson(payload.profile_extra),
+        artist_profile: sanitizeProfileJson(payload.artist_profile),
         last_seen_at: new Date().toISOString(),
       };
       const { data, error } = await admin.from("profiles").update(patch).eq("id", user.id).select("*").single();
@@ -253,6 +346,23 @@ Deno.serve(async (req) => {
       if (error) throw error;
       await admin.from("threads").update({ last_activity_at: new Date().toISOString() }).eq("id", threadId);
       if (thread.author_id !== user.id) await createNotification(thread.author_id, "reply", { thread_id: threadId, post_id: data.id });
+      return json({ data });
+    }
+
+    if (action === "create-report") {
+      const targetType = cleanText(payload.target_type, 40);
+      const targetId = cleanText(payload.target_id, 80);
+      const reason = cleanText(payload.reason, 600);
+      if (!targetType || !targetId || !reason) throw new Error("REPORT_INVALID");
+      const { data, error } = await admin.from("content_reports").insert({
+        reporter_id: user.id,
+        target_type: targetType,
+        target_id: targetId,
+        reason,
+        status: "open",
+      }).select("*").single();
+      if (error) throw error;
+      await logAction(user.id, "report_created", targetType, targetId, { reason });
       return json({ data });
     }
 
@@ -310,21 +420,41 @@ Deno.serve(async (req) => {
       let result: unknown = null;
 
       if (op === "update-thread") {
-        const patch = {
+        const patch = compact({
           title: payload.title === undefined ? undefined : cleanText(payload.title, 120),
           body: payload.body === undefined ? undefined : cleanText(payload.body, 6000),
           category_id: payload.category_id === undefined ? undefined : cleanText(payload.category_id, 80),
           is_deleted: payload.is_deleted === undefined ? undefined : Boolean(payload.is_deleted),
           is_locked: payload.is_locked === undefined ? undefined : Boolean(payload.is_locked),
-          tags: payload.tags,
-        };
+          is_pinned: payload.is_pinned === undefined ? undefined : Boolean(payload.is_pinned),
+          is_featured: payload.is_featured === undefined ? undefined : Boolean(payload.is_featured),
+          is_solved: payload.is_solved === undefined ? undefined : Boolean(payload.is_solved),
+          moderation_status: payload.moderation_status === undefined ? undefined : cleanText(payload.moderation_status, 24),
+          tags: payload.tags === undefined ? undefined : cleanStringArray(payload.tags, 12, 32),
+        });
         const { data, error } = await admin.from("threads").update(patch).eq("id", targetId).select("*").single();
+        if (error) throw error;
+        result = data;
+      } else if (op === "update-post") {
+        const patch = compact({
+          body: payload.body === undefined ? undefined : cleanText(payload.body, 4000),
+          is_deleted: payload.is_deleted === undefined ? undefined : Boolean(payload.is_deleted),
+          moderation_status: payload.moderation_status === undefined ? undefined : cleanText(payload.moderation_status, 24),
+        });
+        const { data, error } = await admin.from("posts").update(patch).eq("id", targetId).select("*").single();
         if (error) throw error;
         result = data;
       } else if (op === "update-user") {
         requireRole(profile, ["admin"]);
         const patch = payload.patch && typeof payload.patch === "object" ? payload.patch as Record<string, unknown> : {};
-        const { data, error } = await admin.from("profiles").update(patch).eq("id", targetId).select("*").single();
+        const allowedPatch = compact({
+          role: patch.role === undefined ? undefined : cleanText(patch.role, 32),
+          user_group: patch.user_group === undefined ? undefined : cleanText(patch.user_group, 48),
+          is_artist: patch.is_artist === undefined ? undefined : Boolean(patch.is_artist),
+          profile_extra: patch.profile_extra === undefined ? undefined : sanitizeProfileJson(patch.profile_extra),
+          artist_profile: patch.artist_profile === undefined ? undefined : sanitizeProfileJson(patch.artist_profile),
+        });
+        const { data, error } = await admin.from("profiles").update(allowedPatch).eq("id", targetId).select("*").single();
         if (error) throw error;
         result = data;
       } else if (op === "category-upsert") {
@@ -369,20 +499,71 @@ Deno.serve(async (req) => {
         if (error) throw error;
         result = data;
       } else if (op === "update-sound-card") {
-        const patch = {
+        const patch = compact({
+          title: payload.title === undefined ? undefined : cleanText(payload.title, 120),
+          artist: payload.artist === undefined ? undefined : cleanText(payload.artist, 120),
+          description: payload.description === undefined ? undefined : cleanText(payload.description, 1200),
+          main_genre: payload.main_genre === undefined ? undefined : cleanText(payload.main_genre, 60),
+          cover_url: payload.cover_url === undefined ? undefined : safeUrl(payload.cover_url) || null,
           map_x: payload.map_x === undefined ? undefined : Number(payload.map_x),
           map_y: payload.map_y === undefined ? undefined : Number(payload.map_y),
           is_hidden: payload.is_hidden === undefined ? undefined : Boolean(payload.is_hidden),
-        };
+        });
         const { data, error } = await admin.from("sound_cards").update(patch).eq("id", targetId).select("*").single();
         if (error) throw error;
         result = data;
       } else if (op === "save-rules") {
         requireRole(profile, ["admin"]);
         const value = payload.value || {};
-        const { data, error } = await admin.from("site_settings").upsert({ key: "rules", value }, { onConflict: "key" }).select("*").single();
+        result = await upsertSetting("rules", value);
+      } else if (op === "save-setting") {
+        requireRole(profile, ["admin"]);
+        result = await upsertSetting(cleanText(payload.key, 80), payload.value || {});
+      } else if (op === "resolve-report") {
+        const status = cleanText(payload.status, 32) || "resolved";
+        const { data, error } = await admin.from("content_reports").update({
+          status,
+          moderator_id: user.id,
+          moderator_note: cleanText(payload.moderator_note, 1000),
+          resolved_at: new Date().toISOString(),
+        }).eq("id", targetId).select("*").single();
         if (error) throw error;
         result = data;
+      } else if (op === "send-notification") {
+        requireRole(profile, ["admin"]);
+        const target = cleanText(payload.target, 32);
+        const type = cleanText(payload.type, 40) || "announcement";
+        const notificationPayload = {
+          title: cleanText(payload.title, 120),
+          body: cleanText(payload.body, 1000),
+          actor_id: user.id,
+        };
+        if (target === "all") {
+          const { data: allUsers } = await admin.from("profiles").select("id").limit(1000);
+          const rows = (allUsers || []).map((row) => ({ user_id: row.id, type, payload: notificationPayload }));
+          if (rows.length) {
+            const { error } = await admin.from("notifications").insert(rows);
+            if (error) throw error;
+          }
+          result = { count: rows.length };
+        } else {
+          const { data: staffUsers } = await admin.from("profiles").select("id").in("role", ["owner", "admin", "moderator"]).limit(200);
+          const rows = (staffUsers || []).map((row) => ({ user_id: row.id, type, payload: notificationPayload }));
+          if (rows.length) {
+            const { error } = await admin.from("notifications").insert(rows);
+            if (error) throw error;
+          }
+          result = { count: rows.length };
+        }
+      } else if (op === "recalculate-groups") {
+        requireRole(profile, ["admin"]);
+        await admin.rpc("recalculate_all_user_groups");
+        result = { ok: true };
+      } else if (op === "delete-upload") {
+        requireRole(profile, ["admin"]);
+        const { error } = await admin.from("forum_uploads").delete().eq("id", targetId);
+        if (error) throw error;
+        result = { id: targetId };
       } else {
         throw new Error("UNKNOWN_ADMIN_ACTION");
       }
