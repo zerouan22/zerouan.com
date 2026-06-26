@@ -765,4 +765,258 @@ function openSoundCardDetail(id){
   $('closeSoundDetailBtn').addEventListener('click',()=>dlg.close()); dlg.showModal();
 }
 
+
+/* ===================== INC FORUM V3.3: RUOLI, PROMO, PROFILI ESTESI, THREAD CLASSICO ===================== */
+const RESERVED_CATEGORY_SLUGS = new Set(['sound-cards','soundcards','sound_cards']);
+const ADMIN_ONLY_SLUGS = new Set(['annunci']);
+const ARTIST_ONLY_SLUGS = new Set(['promozioni-release','promozioni-e-release','promozioni_release','release','promo-release']);
+
+function userGroup(){
+  return String(state.profile?.user_group || state.profile?.profile_type || state.profile?.role || 'user').toLowerCase();
+}
+function isArtist(){
+  return isAdmin() || state.profile?.is_artist === true || userGroup() === 'artist' || String(state.profile?.role || '').toLowerCase() === 'artist';
+}
+function categoryById(id){ return state.categories.find(c=>c.id === id); }
+function isReservedCategory(cat){ return RESERVED_CATEGORY_SLUGS.has(String(cat?.slug || '').toLowerCase()); }
+function isAnnouncementCategory(cat){ return ADMIN_ONLY_SLUGS.has(String(cat?.slug || '').toLowerCase()); }
+function isPromotionCategory(cat){ return ARTIST_ONLY_SLUGS.has(String(cat?.slug || '').toLowerCase()); }
+function canCreateInCategory(cat){
+  if(!cat || isReservedCategory(cat)) return false;
+  if(isAnnouncementCategory(cat)) return isAdmin();
+  if(isPromotionCategory(cat)) return isArtist();
+  return !!state.user;
+}
+function categoryRestrictionText(cat){
+  if(isAnnouncementCategory(cat)) return 'Solo admin';
+  if(isPromotionCategory(cat)) return 'Solo artisti';
+  return '';
+}
+
+function renderRoleBadge(){
+  const badge = $('userBadge'); if(!badge) return;
+  badge.classList.remove('is-admin','is-artist');
+  if(isAdmin()) badge.classList.add('is-admin');
+  else if(isArtist()) badge.classList.add('is-artist');
+}
+
+const _renderAuthStateV33 = renderAuthState;
+renderAuthState = function(){
+  _renderAuthStateV33();
+  renderRoleBadge();
+};
+
+renderCategories = function() {
+  const visible = state.categories.filter(c=>!isReservedCategory(c));
+  if (!visible.some(c=>c.id===state.selectedCategoryId) && visible[0]) {
+    state.selectedCategoryId = visible[0].id;
+    state.selectedCategorySlug = visible[0].slug;
+  }
+  els.categoryList.innerHTML = visible.map(cat => {
+    const locked = categoryRestrictionText(cat);
+    const isActive = cat.id===state.selectedCategoryId;
+    return `<button class="category-item ${isActive?'active':''} ${locked?'restricted':''}" type="button" data-id="${cat.id}">
+      <span class="left"><span>${escapeHtml(cat.icon)}</span><span>${escapeHtml(cat.name)}</span></span>
+      <span class="category-meta">${locked?`<em>${escapeHtml(locked)}</em>`:''}<span class="pill">${cat.thread_count || 0}</span></span>
+    </button>`;
+  }).join('');
+  els.categoryList.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+    const cat = state.categories.find(c=>c.id===btn.dataset.id);
+    state.selectedCategoryId = cat.id;
+    state.selectedCategorySlug = cat.slug;
+    showForumMode();
+    renderCategories();
+    updateHero(cat);
+    renderThreads();
+    closeThread();
+  }));
+  updateHero(state.categories.find(c=>c.id===state.selectedCategoryId));
+};
+
+renderCategorySelect = function() {
+  const visible = state.categories.filter(c=>!isReservedCategory(c));
+  els.newCategory.innerHTML = visible.map(c=>{
+    const blocked = state.user && !canCreateInCategory(c);
+    const note = categoryRestrictionText(c);
+    return `<option value="${c.id}" ${blocked?'disabled':''}>${escapeHtml(c.icon)} ${escapeHtml(c.name)}${note?` — ${escapeHtml(note)}`:''}</option>`;
+  }).join('');
+};
+
+updateHero = function(cat) {
+  if (!cat) return;
+  els.pageTitle.textContent = cat.name;
+  els.pageSubtitle.textContent = cat.description || 'Discussioni della community.';
+  els.currentSection.textContent = isPromotionCategory(cat) ? 'INC. Release Board' : 'INC. Forum';
+  els.heroThreads.textContent = cat.thread_count || 0;
+  els.heroPosts.textContent = cat.post_count || 0;
+  const icon = document.querySelector('.category-icon');
+  if(icon) icon.textContent = cat.icon || '🎛️';
+};
+
+function firstAllowedCategoryId(preferId){
+  const visible = state.categories.filter(c=>!isReservedCategory(c));
+  const preferred = visible.find(c=>c.id===preferId && canCreateInCategory(c));
+  if(preferred) return preferred.id;
+  const fallback = visible.find(canCreateInCategory);
+  return fallback?.id || visible[0]?.id || '';
+}
+
+openThreadComposer = function(sourceId) {
+  if (!state.user) return requireLogin();
+  if (sourceId === 'quickMusicBtn') return openSoundCardComposer();
+  const selected = categoryById(state.selectedCategoryId);
+  if(selected && !canCreateInCategory(selected)){
+    if(isAnnouncementCategory(selected)) return toast('La sezione Annunci è riservata agli admin.');
+    if(isPromotionCategory(selected)) return toast('La sezione Promozioni & Release è riservata ai profili Artista.');
+  }
+  state.threadMedia=[]; els.threadForm.reset(); els.threadMessage.textContent='';
+  els.newCategory.value = firstAllowedCategoryId(state.selectedCategoryId);
+  if (sourceId === 'quickPhotoBtn') setTimeout(()=>els.threadFiles.click(),100);
+  if (sourceId === 'quickVideoBtn' || sourceId === 'quickLinkBtn') setTimeout(()=>openLinkDialog('thread'),100);
+  renderMediaPreview('thread'); els.threadDialog.showModal();
+};
+
+const _createThreadV32 = createThread;
+createThread = async function(e){
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  const cat = categoryById(els.newCategory.value);
+  if(!canCreateInCategory(cat)){
+    if(isAnnouncementCategory(cat)){ els.threadMessage.textContent = 'Non puoi pubblicare qui: Annunci è riservata agli admin.'; return; }
+    if(isPromotionCategory(cat)){ els.threadMessage.textContent = 'Non puoi pubblicare qui: Promozioni & Release richiede profilo Artista.'; return; }
+    els.threadMessage.textContent = 'Categoria non pubblicabile.'; return;
+  }
+  return _createThreadV32(e);
+};
+
+function profileExtra(){ return state.profile?.profile_extra || {}; }
+function artistProfile(){ return state.profile?.artist_profile || {}; }
+function setInputValue(id, value){ const el=$(id); if(el) el.value = value || ''; }
+function getInputValue(id){ return ($(id)?.value || '').trim(); }
+function csvProfile(id){ return getInputValue(id).split(',').map(x=>x.trim()).filter(Boolean); }
+
+openProfileEditor = function() {
+  if (!state.user) return requireLogin();
+  els.profileMessage.textContent='';
+  els.profileDisplayName.value=state.profile?.display_name||'';
+  els.profileUsername.value=state.profile?.username||'';
+  els.profileBio.value=state.profile?.bio||'';
+  els.profileTheme.value=state.profile?.theme||'dark';
+  const links = state.profile?.social_links || {};
+  Object.entries(els.links).forEach(([k,el])=>el.value=links[k]||'');
+  const extra = profileExtra();
+  setInputValue('profileHeadline', extra.headline);
+  setInputValue('profileLocation', extra.location);
+  setInputValue('profileSignature', extra.signature);
+  setInputValue('profileInterests', Array.isArray(extra.interests)?extra.interests.join(', '):extra.interests);
+  setInputValue('profileTools', Array.isArray(extra.tools)?extra.tools.join(', '):extra.tools);
+  setInputValue('profileAvailableFor', Array.isArray(extra.available_for)?extra.available_for.join(', '):extra.available_for);
+  const art = artistProfile();
+  setInputValue('artistNameProfile', art.name);
+  setInputValue('artistGenres', Array.isArray(art.genres)?art.genres.join(', '):art.genres);
+  setInputValue('artistRoles', Array.isArray(art.roles)?art.roles.join(', '):art.roles);
+  setInputValue('artistInfluences', Array.isArray(art.influences)?art.influences.join(', '):art.influences);
+  setInputValue('artistLatestRelease', art.latest_release);
+  setInputValue('artistBio', art.bio);
+  renderAvatar(els.profilePreviewAvatar,state.profile,state.profile?.display_name);
+  els.profileDialog.showModal();
+};
+
+saveProfile = async function(e) {
+  e.preventDefault(); if(!state.user) return requireLogin(); els.profileMessage.textContent='Salvataggio profilo esteso...';
+  let avatar_url = state.profile?.avatar_url || null;
+  const file = els.avatarFile.files[0];
+  if (file) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'; const path = `${state.user.id}/avatar-${Date.now()}.${ext}`;
+    const { error } = await db.storage.from(STORAGE_BUCKET).upload(path, file, { upsert:true, cacheControl:'3600' });
+    if (error) { els.profileMessage.textContent = error.message; return; }
+    avatar_url = db.storage.from(STORAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+  const social_links = {}; Object.entries(els.links).forEach(([k,el])=>{ const u=safeUrl(el.value.trim()); if(u) social_links[k]=u; });
+  const profile_extra = {
+    headline:getInputValue('profileHeadline'),
+    location:getInputValue('profileLocation'),
+    signature:getInputValue('profileSignature'),
+    interests:csvProfile('profileInterests'),
+    tools:csvProfile('profileTools'),
+    available_for:csvProfile('profileAvailableFor')
+  };
+  const artist_profile = {
+    name:getInputValue('artistNameProfile'),
+    genres:csvProfile('artistGenres'),
+    roles:csvProfile('artistRoles'),
+    influences:csvProfile('artistInfluences'),
+    latest_release:getInputValue('artistLatestRelease'),
+    bio:getInputValue('artistBio')
+  };
+  const update = { display_name:els.profileDisplayName.value.trim(), username:els.profileUsername.value.trim().toLowerCase() || null, bio:els.profileBio.value.trim(), theme:els.profileTheme.value, avatar_url, social_links, profile_extra, artist_profile, last_seen_at:new Date().toISOString() };
+  const { error } = await db.from('profiles').update(update).eq('id', state.user.id);
+  if (error) { els.profileMessage.textContent = error.message; return; }
+  await loadProfile(); renderAuthState(); els.profileDialog.close(); toast('Profilo aggiornato'); await loadLivePanels();
+};
+
+function chipsHtml(values, max=4){
+  return (values || []).filter(Boolean).slice(0,max).map(v=>`<span>${escapeHtml(v)}</span>`).join('');
+}
+function forumUserCardHtml(profile, fallbackName, role){
+  const extra = profile?.profile_extra || {};
+  const art = profile?.artist_profile || {};
+  const name = profile?.display_name || fallbackName || 'Utente';
+  const artist = profile?.is_artist || String(profile?.user_group||'').toLowerCase()==='artist' || String(role||'').toLowerCase()==='artist';
+  const avatarStyle = profile?.avatar_url ? `style="background-image:url('${escapeHtml(profile.avatar_url)}')"` : '';
+  const genreChips = artist ? chipsHtml(art.genres || [], 3) : '';
+  return `<aside class="forum-user-card">
+    <div class="author-avatar xl" ${avatarStyle}>${profile?.avatar_url?'':initial(name)}</div>
+    <strong>${escapeHtml(name)}</strong>
+    <span class="badge ${artist?'artist-badge':''}">${escapeHtml(artist?'artist':(role || profile?.role || 'user'))}</span>
+    ${extra.headline?`<p>${escapeHtml(extra.headline)}</p>`:''}
+    ${extra.location?`<small>📍 ${escapeHtml(extra.location)}</small>`:''}
+    ${genreChips?`<div class="forum-user-chips">${genreChips}</div>`:''}
+  </aside>`;
+}
+async function fetchProfileById(id){
+  if(!id) return null;
+  const { data } = await db.from('profiles').select('id,display_name,username,avatar_url,role,user_group,is_artist,profile_extra,artist_profile,social_links').eq('id', id).maybeSingle();
+  return data || null;
+}
+
+openThread = async function(id) {
+  const t = state.threads.find(x=>x.id===id); if (!t) return; state.currentThread = t;
+  els.threadView.classList.remove('hidden');
+  els.breadcrumbCategory.textContent=t.category_name; els.threadTitle.textContent=t.title; els.threadMeta.textContent=`${t.author_name} · ${fmtDate(t.created_at)} · ${t.view_count || 0} visite`; els.threadBody.textContent=t.body; els.replyCount.textContent=t.reply_count || 0; renderMedia(els.threadMedia, mediaArray(t.media_items));
+  const mainProfile = await fetchProfileById(t.author_id);
+  const mainArticle = els.threadView.querySelector('.thread-main');
+  if(mainArticle){
+    mainArticle.classList.add('classic-thread-post');
+    let card = mainArticle.querySelector('.forum-user-card');
+    if(card) card.remove();
+    mainArticle.insertAdjacentHTML('afterbegin', forumUserCardHtml(mainProfile, t.author_name, t.author_role));
+  }
+  await db.rpc('increment_thread_views', { thread_id_input: id });
+  await loadPosts(id); els.threadView.scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+loadPosts = async function(threadId) {
+  const { data, error } = await db.from('post_overview').select('*').eq('thread_id', threadId).order('created_at');
+  if (error) return toast('Errore risposte: ' + error.message);
+  const rows = data || [];
+  const profiles = new Map();
+  for (const p of rows) {
+    if (p.author_id && !profiles.has(p.author_id)) profiles.set(p.author_id, await fetchProfileById(p.author_id));
+  }
+  els.postsList.innerHTML = rows.map(p=>{
+    const prof = profiles.get(p.author_id) || {display_name:p.author_name, avatar_url:p.author_avatar_url, role:p.author_role};
+    const extra = prof?.profile_extra || {};
+    return `<article class="post classic-reply-post">
+      ${forumUserCardHtml(prof, p.author_name, p.author_role)}
+      <div class="forum-post-content">
+        <div class="author-row"><strong>${escapeHtml(p.author_name)}</strong><span class="badge">${escapeHtml(p.author_role || 'user')}</span><span class="muted small">${fmtDate(p.created_at)}</span></div>
+        <div class="post-body">${escapeHtml(p.body)}</div>
+        <div class="media-grid">${mediaHtml(mediaArray(p.media_items))}</div>
+        ${extra.signature?`<div class="forum-signature">${escapeHtml(extra.signature)}</div>`:''}
+      </div>
+    </article>`;
+  }).join('') || '<p class="muted" style="padding:20px 24px">Ancora nessuna risposta.</p>';
+};
+
 init();

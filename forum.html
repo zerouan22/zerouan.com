@@ -273,6 +273,27 @@
           <label>Tema profilo<select id="profileTheme"><option value="dark">Dark purple</option><option value="cyber">Cyber cyan</option><option value="crimson">Crimson</option><option value="light">Light</option></select></label>
         </div>
       </div>
+      <h3>Profilo forum</h3>
+      <div class="links-grid profile-extra-grid">
+        <label>Titolo personale<input id="profileHeadline" type="text" maxlength="90" placeholder="Es. Producer, microbiologo, visual designer..." /></label>
+        <label>Località / scena<input id="profileLocation" type="text" maxlength="80" placeholder="Es. Abruzzo, Roma, UK underground..." /></label>
+        <label>Firma forum<textarea id="profileSignature" rows="3" maxlength="360" placeholder="Firma che apparirà sotto i tuoi post."></textarea></label>
+        <label>Interessi<input id="profileInterests" type="text" maxlength="180" placeholder="Musica, mix, microbiologia, video, web..." /></label>
+        <label>Strumenti / software<input id="profileTools" type="text" maxlength="180" placeholder="Ableton, chitarra, OBS, DaVinci, ecc." /></label>
+        <label>Disponibile per<input id="profileAvailableFor" type="text" maxlength="180" placeholder="Collab, feedback, grafiche, mix, video..." /></label>
+      </div>
+
+      <h3>Profilo artista</h3>
+      <p class="muted small">Questi campi diventano realmente operativi quando il profilo viene marcato come <strong>Artista</strong> da admin nel database.</p>
+      <div class="links-grid profile-extra-grid">
+        <label>Nome artista<input id="artistNameProfile" type="text" maxlength="90" placeholder="Nome progetto / alias" /></label>
+        <label>Generi principali<input id="artistGenres" type="text" maxlength="180" placeholder="Alternative Rap, Trip Hop, Techno..." /></label>
+        <label>Ruoli artistici<input id="artistRoles" type="text" maxlength="180" placeholder="Rapper, producer, vocalist, videomaker..." /></label>
+        <label>Influenze<input id="artistInfluences" type="text" maxlength="220" placeholder="Massive Attack, Salmo, De André..." /></label>
+        <label>Ultima release<input id="artistLatestRelease" type="text" maxlength="140" placeholder="Titolo + anno/link breve" /></label>
+        <label>Bio artista<textarea id="artistBio" rows="3" maxlength="420" placeholder="Descrizione artistica più specifica."></textarea></label>
+      </div>
+
       <h3>Link social / musicali</h3>
       <div class="links-grid">
         <label>Instagram<input id="linkInstagram" type="url" placeholder="https://instagram.com/..." /></label>
