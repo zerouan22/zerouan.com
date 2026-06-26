@@ -1,0 +1,2 @@
+[functions.forum-api]
+verify_jwt = true

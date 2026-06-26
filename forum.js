@@ -27,7 +27,7 @@ const els = {
   userBadge: $('userBadge'), openAuthBtn: $('openAuthBtn'), openProfileBtn: $('openProfileBtn'), logoutBtn: $('logoutBtn'), themeBtn: $('themeBtn'),
   authDialog: $('authDialog'), closeAuthBtn: $('closeAuthBtn'), loginBtn: $('loginBtn'), signupBtn: $('signupBtn'), authEmail: $('authEmail'), authPassword: $('authPassword'), displayName: $('displayName'), authMessage: $('authMessage'),
   profileDialog: $('profileDialog'), closeProfileBtn: $('closeProfileBtn'), cancelProfileBtn: $('cancelProfileBtn'), profileForm: $('profileForm'), profilePreviewAvatar: $('profilePreviewAvatar'), avatarFile: $('avatarFile'), profileDisplayName: $('profileDisplayName'), profileUsername: $('profileUsername'), profileBio: $('profileBio'), profileTheme: $('profileTheme'), profileMessage: $('profileMessage'),
-  links: { instagram: $('linkInstagram'), youtube: $('linkYoutube'), spotify: $('linkSpotify'), soundcloud: $('linkSoundcloud'), tiktok: $('linkTiktok'), website: $('linkWebsite') },
+  links: { instagram: $('linkInstagram'), youtube: $('linkYoutube'), spotify: $('linkSpotify'), soundcloud: $('linkSoundcloud'), tiktok: $('linkTiktok'), bandcamp: $('linkBandcamp'), apple_music: $('linkAppleMusic'), x: $('linkX'), twitch: $('linkTwitch'), discord: $('linkDiscord'), hub: $('linkHub'), website: $('linkWebsite') },
   newThreadBtn: $('newThreadBtn'), quickPostBtn: $('quickPostBtn'), quickPhotoBtn: $('quickPhotoBtn'), quickVideoBtn: $('quickVideoBtn'), quickLinkBtn: $('quickLinkBtn'), quickMusicBtn: $('quickMusicBtn'), composerAvatar: $('composerAvatar'),
   threadDialog: $('threadDialog'), closeThreadBtn: $('closeThreadBtn'), cancelThreadBtn: $('cancelThreadBtn'), threadForm: $('threadForm'), newTitle: $('newTitle'), newCategory: $('newCategory'), newBody: $('newBody'), threadMessage: $('threadMessage'), threadFiles: $('threadFiles'), threadMediaPreview: $('threadMediaPreview'), threadAddLinkBtn: $('threadAddLinkBtn'), clearThreadMediaBtn: $('clearThreadMediaBtn'),
   linkDialog: $('linkDialog'), linkForm: $('linkForm'), closeLinkBtn: $('closeLinkBtn'), cancelLinkBtn: $('cancelLinkBtn'), mediaUrl: $('mediaUrl'), mediaTitle: $('mediaTitle'),
@@ -353,7 +353,7 @@ function renderSoundCardList(cards){
       <div class="mini-actions">
         <a href="${escapeHtml(safeUrl(c.track_url))}" target="_blank" rel="noopener">Ascolta</a>
         <button type="button" data-open="${c.id}">Apri</button>
-        ${isAdmin()?`<button type="button" class="danger" data-hide="${c.id}">Nascondi</button>`:''}
+        ${isStaff()?`<button type="button" class="danger" data-hide="${c.id}">Nascondi</button>`:''}
       </div>
     </article>`).join('') || '<p class="muted small">Nessuna Sound Card trovata.</p>';
   host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSoundCardDetail(b.dataset.open)));
@@ -417,7 +417,7 @@ function makeSoundNodeDraggable(node, host){
   node.addEventListener('dblclick',()=>openSoundCardDetail(id));
   node.addEventListener('pointerdown', e=>{ dragging=true; node.setPointerCapture(e.pointerId); const r=node.getBoundingClientRect(); dx=e.clientX-r.left-r.width/2; dy=e.clientY-r.top-r.height/2; });
   node.addEventListener('pointermove', e=>{ if(!dragging) return; const hr=host.getBoundingClientRect(); const x=e.clientX-hr.left-dx; const y=e.clientY-hr.top-dy; node.style.left=x+'px'; node.style.top=y+'px'; updateSoundLines(id,x,y,host); });
-  node.addEventListener('pointerup', async e=>{ if(!dragging) return; dragging=false; try{ node.releasePointerCapture(e.pointerId); }catch{} if(isAdmin()){ const x=parseFloat(node.style.left), y=parseFloat(node.style.top); await db.from('sound_cards').update({map_x:x,map_y:y}).eq('id',id); } });
+  node.addEventListener('pointerup', async e=>{ if(!dragging) return; dragging=false; try{ node.releasePointerCapture(e.pointerId); }catch{} if(isStaff()){ const x=parseFloat(node.style.left), y=parseFloat(node.style.top); await adminEdge('update-sound-card', { id, target_type:'sound_card', map_x:x, map_y:y }); } });
 }
 function updateSoundLines(id,x,y,host){ host.querySelectorAll(`line[data-a="${id}"]`).forEach(l=>{l.setAttribute('x1',x);l.setAttribute('y1',y);}); host.querySelectorAll(`line[data-b="${id}"]`).forEach(l=>{l.setAttribute('x2',x);l.setAttribute('y2',y);}); }
 
@@ -605,7 +605,7 @@ function renderSoundCardList(cards){
       <div class="mini-actions">
         <a href="${escapeHtml(safeUrl(c.track_url))}" target="_blank" rel="noopener">Ascolta</a>
         <button type="button" data-open="${c.id}">Apri card</button>
-        ${isAdmin()?`<button type="button" class="danger" data-hide="${c.id}">Nascondi</button>`:''}
+        ${isStaff()?`<button type="button" class="danger" data-hide="${c.id}">Nascondi</button>`:''}
       </div>
     </article>`).join('') || '<p class="muted small">Nessuna Sound Card trovata. Crea la prima: la mappa si genera appena esistono carte.</p>';
   host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSoundCardDetail(b.dataset.open)));
@@ -706,7 +706,7 @@ function makeSoundNodeDraggable(node, host){
   node.addEventListener('click',()=>{ if(!moved) openSoundCardDetail(id); });
   node.addEventListener('pointerdown', e=>{ dragging=true; moved=false; node.setPointerCapture(e.pointerId); const r=node.getBoundingClientRect(); dx=e.clientX-r.left-r.width/2; dy=e.clientY-r.top-r.height/2; });
   node.addEventListener('pointermove', e=>{ if(!dragging) return; moved=true; const hr=host.getBoundingClientRect(); const x=e.clientX-hr.left-dx; const y=e.clientY-hr.top-dy; node.style.left=x+'px'; node.style.top=y+'px'; updateSoundLines(id,x,y,host); });
-  node.addEventListener('pointerup', async e=>{ if(!dragging) return; dragging=false; try{ node.releasePointerCapture(e.pointerId); }catch{} if(isAdmin() && moved){ const x=parseFloat(node.style.left), y=parseFloat(node.style.top); await db.from('sound_cards').update({map_x:x,map_y:y}).eq('id',id); } setTimeout(()=>{moved=false;},0); });
+  node.addEventListener('pointerup', async e=>{ if(!dragging) return; dragging=false; try{ node.releasePointerCapture(e.pointerId); }catch{} if(isStaff() && moved){ const x=parseFloat(node.style.left), y=parseFloat(node.style.top); await adminEdge('update-sound-card', { id, target_type:'sound_card', map_x:x, map_y:y }); } setTimeout(()=>{moved=false;},0); });
 }
 
 function centerSoundMap(){
@@ -1117,7 +1117,7 @@ renderThreads = function(){
   els.emptyThreads.classList.toggle('hidden', items.length>0);
   els.threadList.innerHTML = items.map(t => {
     const media = mediaArray(t.media_items);
-    const admin = isAdmin() ? `<div class="thread-admin-actions">
+    const admin = isStaff() ? `<div class="thread-admin-actions">
       <button type="button" data-admin-edit-thread="${escapeHtml(t.id)}">Modifica</button>
       <button type="button" data-admin-move-thread="${escapeHtml(t.id)}">Sposta</button>
       <button type="button" class="admin-danger" data-admin-delete-thread="${escapeHtml(t.id)}">Elimina</button>
@@ -1408,6 +1408,486 @@ const _bindV3EventsV34Base = bindV3Events;
 bindV3Events = function(){
   _bindV3EventsV34Base();
   bindAdminControlEvents();
+};
+
+/* ===================== INC FORUM EDGE FUNCTIONS GATEWAY ===================== */
+async function forumApi(action, payload = {}) {
+  const { data: sessionData } = await db.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Devi accedere per questa azione.');
+  const { data, error } = await db.functions.invoke('forum-api', {
+    body: { action, payload },
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (error) throw new Error(error.message || 'Edge Function non raggiungibile.');
+  if (data?.error) throw new Error(data.error);
+  return data?.data ?? data;
+}
+
+async function createSignedForumUpload(file, folder = 'media') {
+  const signed = await forumApi('signed-upload', {
+    fileName: file.name,
+    contentType: file.type,
+    size: file.size,
+    folder
+  });
+  const { error } = await db.storage.from(STORAGE_BUCKET).uploadToSignedUrl(signed.path, signed.token, file);
+  if (error) throw error;
+  const publicUrl = db.storage.from(STORAGE_BUCKET).getPublicUrl(signed.path).data.publicUrl;
+  return { type: 'image', url: publicUrl, path: signed.path, title: file.name || 'Immagine' };
+}
+
+function currentSocialLinks() {
+  const social_links = {};
+  Object.entries(els.links).forEach(([key, el]) => {
+    const url = safeUrl(el?.value?.trim() || '');
+    if (url) social_links[key] = url;
+  });
+  return social_links;
+}
+
+uploadPendingMedia = async function(target) {
+  const result = [];
+  for (const item of state[target + 'Media']) {
+    if (item.type === 'image_pending' && item.file) {
+      try {
+        result.push(await createSignedForumUpload(item.file, target === 'reply' ? 'replies' : 'threads'));
+      } catch (error) {
+        toast('Upload rifiutato: ' + error.message);
+      }
+    } else {
+      result.push(normalizeMedia(item));
+    }
+  }
+  return result;
+};
+
+createThread = async function(e) {
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  const cat = categoryById(els.newCategory.value);
+  if (!canCreateInCategory(cat)) {
+    els.threadMessage.textContent = 'Non puoi pubblicare in questa sezione.';
+    return;
+  }
+  els.threadMessage.textContent = 'Controllo sicurezza e pubblicazione via Edge Function...';
+  try {
+    const media = await uploadPendingMedia('thread');
+    const title = els.newTitle.value.trim();
+    const body = els.newBody.value.trim();
+    const response = await forumApi('create-thread', {
+      category_id: els.newCategory.value,
+      title,
+      body,
+      media_items: media,
+      tags: extractTags(`${title} ${body}`)
+    });
+    els.threadDialog.close();
+    state.threadMedia = [];
+    await Promise.all([loadThreads(), loadCategories(), loadStats(), loadLivePanels()]);
+    toast(response?.moderation_status === 'pending' ? 'Post inviato in moderazione anti-spam.' : 'Discussione pubblicata su INC. Forum');
+  } catch (error) {
+    els.threadMessage.textContent = error.message;
+  }
+};
+
+createReply = async function(e) {
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  if (!state.currentThread) return;
+  try {
+    const media = await uploadPendingMedia('reply');
+    await forumApi('create-reply', {
+      thread_id: state.currentThread.id,
+      body: els.replyBody.value.trim(),
+      media_items: media
+    });
+    els.replyForm.reset();
+    state.replyMedia = [];
+    renderMediaPreview('reply');
+    await Promise.all([loadPosts(state.currentThread.id), loadThreads(), loadStats(), loadLivePanels()]);
+    toast('Risposta pubblicata');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+saveProfile = async function(e) {
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  els.profileMessage.textContent = 'Salvataggio profilo via Edge Function...';
+  try {
+    let avatar_url = state.profile?.avatar_url || null;
+    const file = els.avatarFile.files[0];
+    if (file) {
+      const uploaded = await createSignedForumUpload(file, 'avatars');
+      avatar_url = uploaded.url;
+    }
+    const profile_extra = {
+      headline: getInputValue('profileHeadline'),
+      location: getInputValue('profileLocation'),
+      signature: getInputValue('profileSignature'),
+      interests: csvProfile('profileInterests'),
+      tools: csvProfile('profileTools'),
+      available_for: csvProfile('profileAvailableFor')
+    };
+    const artist_profile = {
+      name: getInputValue('artistNameProfile'),
+      genres: csvProfile('artistGenres'),
+      roles: csvProfile('artistRoles'),
+      influences: csvProfile('artistInfluences'),
+      latest_release: getInputValue('artistLatestRelease'),
+      bio: getInputValue('artistBio')
+    };
+    await forumApi('update-profile', {
+      display_name: els.profileDisplayName.value.trim(),
+      username: els.profileUsername.value.trim().toLowerCase() || null,
+      bio: els.profileBio.value.trim(),
+      theme: els.profileTheme.value,
+      avatar_url,
+      social_links: currentSocialLinks(),
+      profile_extra,
+      artist_profile
+    });
+    await loadProfile();
+    renderAuthState();
+    els.profileDialog.close();
+    toast('Profilo aggiornato');
+    await loadLivePanels();
+  } catch (error) {
+    els.profileMessage.textContent = error.message;
+  }
+};
+
+createSoundCard = async function(e) {
+  e.preventDefault();
+  if (!state.user) return requireLogin();
+  $('soundCardMessage').textContent = 'Controllo piattaforma e salvataggio Sound Card via Edge Function...';
+  try {
+    const main = $('scMainGenre').value.trim();
+    const sub = csv($('scSubgenres').value);
+    const collabs = csv($('scCollaborators').value);
+    const payload = {
+      track_url: safeUrl($('scUrl').value.trim()),
+      platform: platformFromUrl($('scUrl').value.trim()),
+      preview_url: safeUrl($('scPreviewUrl').value.trim()) || null,
+      title: $('scTitle').value.trim(),
+      artist: $('scArtist').value.trim(),
+      description: $('scDescription').value.trim(),
+      cover_url: safeUrl($('scCoverUrl').value.trim()) || null,
+      genres: [...new Set([main, ...sub].filter(Boolean))],
+      main_genre: main,
+      subgenres: sub,
+      collaborators: collabs,
+      tags: extractTags(`${$('scDescription').value} ${main} ${sub.join(' ')} ${collabs.join(' ')}`)
+    };
+    await forumApi('create-sound-card', payload);
+    $('soundCardDialog')?.close();
+    await Promise.all([loadSoundCards(), loadThreads(), loadStats(), loadLivePanels()]);
+    toast('Sound Card creata tramite Edge Function');
+    showSoundCardsMode();
+  } catch (error) {
+    $('soundCardMessage').textContent = error.message;
+  }
+};
+
+recordSoundCardView = async function(id) {
+  if (!state.user || !id) return;
+  try {
+    await forumApi('record-sound-card-view', { sound_card_id: id });
+    await loadProfile();
+    renderAuthState();
+  } catch (error) {
+    console.warn('record-sound-card-view:', error.message);
+  }
+};
+
+async function adminEdge(op, payload = {}) {
+  return forumApi('admin-action', { op, ...payload });
+}
+
+function isModerator() {
+  return state.profile?.role === 'moderator';
+}
+
+function isStaff() {
+  return isAdmin() || isModerator();
+}
+
+const _renderAuthStateEdgeBase = renderAuthState;
+renderAuthState = function() {
+  _renderAuthStateEdgeBase();
+  const navAdmin = $('navAdmin');
+  if (navAdmin) navAdmin.classList.toggle('hidden', !isStaff());
+};
+
+openAdminEditor = function() {
+  if (!isStaff()) return toast('Accesso staff richiesto.');
+  $('adminDialog')?.showModal();
+  setAdminTab('contents');
+  loadAdminDashboard();
+};
+
+loadAdminUsers = async function() {
+  try {
+    const data = await forumApi('get-admin-dashboard');
+    state.adminUsers = data.users || [];
+    state.adminEvents = data.events || [];
+    state.adminReports = data.reports || [];
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminDeleteThread = async function(id) {
+  if (!isStaff()) return toast('Accesso staff richiesto.');
+  const t = state.threads.find(x => x.id === id);
+  if (!t) return;
+  if (!confirm(`Nascondere la discussione: ${t.title}?`)) return;
+  try {
+    await adminEdge('update-thread', { id, target_type: 'thread', is_deleted: true });
+    if (state.currentThread?.id === id) closeThread();
+    await Promise.all([loadThreads(), loadCategories(), loadStats(), loadLivePanels()]);
+    renderAdminThreads();
+    toast('Discussione nascosta e tracciata nel log moderazione.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminEditThread = async function(id) {
+  if (!isStaff()) return toast('Accesso staff richiesto.');
+  const t = state.threads.find(x => x.id === id);
+  if (!t) return;
+  const title = prompt('Nuovo titolo:', t.title);
+  if (title === null) return;
+  const body = prompt('Nuovo testo:', t.body || '');
+  if (body === null) return;
+  try {
+    await adminEdge('update-thread', { id, target_type: 'thread', title: title.trim(), body: body.trim() });
+    await loadThreads();
+    if (state.currentThread?.id === id) await openThread(id);
+    renderAdminThreads();
+    toast('Discussione modificata.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminMoveThread = async function(id) {
+  if (!isStaff()) return toast('Accesso staff richiesto.');
+  const visible = state.categories.filter(c => !isReservedCategory(c));
+  const msg = visible.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+  const raw = prompt(`Sposta in quale categoria?\n${msg}`, '1');
+  if (raw === null) return;
+  const cat = visible[Number(raw) - 1];
+  if (!cat) return toast('Categoria non valida.');
+  try {
+    await adminEdge('update-thread', { id, target_type: 'thread', category_id: cat.id });
+    await Promise.all([loadThreads(), loadCategories()]);
+    renderAdminThreads();
+    toast('Discussione spostata.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminToggleHomepageNews = async function(id) {
+  if (!isStaff()) return toast('Accesso staff richiesto.');
+  const t = state.threads.find(x => x.id === id);
+  if (!t) return;
+  const tags = threadTags(t);
+  const active = isHomepageNewsThread(t);
+  const nextTags = active
+    ? tags.filter(tag => tag.toLowerCase() !== HOMEPAGE_NEWS_TAG)
+    : [...tags.filter(tag => tag.toLowerCase() !== HOMEPAGE_NEWS_TAG), HOMEPAGE_NEWS_TAG];
+  try {
+    await adminEdge('update-thread', { id, target_type: 'thread', tags: nextTags });
+    await loadThreads();
+    renderAdminThreads();
+    toast(active ? 'Rimossa dalla bacheca News.' : 'Aggiunta alla bacheca News.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+hideSoundCard = async function(id) {
+  if (!isStaff()) return toast('Accesso staff richiesto.');
+  if (!confirm('Nascondere questa Sound Card dalla mappa?')) return;
+  try {
+    await adminEdge('hide-sound-card', { id, target_type: 'sound_card' });
+    await loadSoundCards();
+    toast('Sound Card nascosta');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminSetUserGroup = async function(id, group) {
+  if (!isAdmin()) return;
+  const patch = group === 'artist' ? { user_group: 'artist', is_artist: true } : { user_group: group, is_artist: false };
+  try {
+    await adminEdge('update-user', { id, target_type: 'profile', patch });
+    await loadAdminUsers();
+    renderAdminUsers();
+    toast('Gruppo aggiornato.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminToggleArtist = async function(id) {
+  const u = state.adminUsers.find(x => x.id === id);
+  if (!u) return;
+  const patch = { is_artist: !u.is_artist, user_group: !u.is_artist ? 'artist' : 'visitatore' };
+  try {
+    await adminEdge('update-user', { id, target_type: 'profile', patch });
+    await loadAdminUsers();
+    renderAdminUsers();
+    toast('Stato artista aggiornato.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminMakeAdmin = async function(id) {
+  if (!confirm('Dare ruolo admin a questo utente?')) return;
+  try {
+    await adminEdge('update-user', { id, target_type: 'profile', patch: { role: 'admin' } });
+    await loadAdminUsers();
+    renderAdminUsers();
+    toast('Utente promosso admin.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminCreateCategory = async function(e) {
+  e.preventDefault();
+  if (!isAdmin()) return;
+  try {
+    await adminEdge('category-upsert', {
+      target_type: 'category',
+      name: getInputValue('adminCategoryName'),
+      slug: getInputValue('adminCategorySlug').toLowerCase(),
+      icon: getInputValue('adminCategoryIcon') || '◆',
+      sort_order: Number(getInputValue('adminCategorySort') || 50),
+      description: 'Categoria creata dal pannello admin.'
+    });
+    $('adminCategoryForm')?.reset();
+    await loadCategories();
+    renderAdminCategories();
+    renderAdminCategoryFilter();
+    toast('Categoria creata.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminEditCategory = async function(id) {
+  const c = state.categories.find(x => x.id === id);
+  if (!c) return;
+  const name = prompt('Nome categoria:', c.name);
+  if (name === null) return;
+  const desc = prompt('Descrizione:', c.description || '');
+  if (desc === null) return;
+  try {
+    await adminEdge('category-upsert', {
+      id,
+      target_type: 'category',
+      name: name.trim(),
+      slug: c.slug,
+      icon: c.icon || '◆',
+      sort_order: c.sort_order ?? 50,
+      description: desc.trim()
+    });
+    await loadCategories();
+    renderAdminCategories();
+    renderCategories();
+    toast('Categoria aggiornata.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminDeleteCategory = async function(id) {
+  if (!confirm('Eliminare categoria? Fallira se contiene discussioni protette da vincoli.')) return;
+  try {
+    await adminEdge('category-delete', { id, target_type: 'category' });
+    await loadCategories();
+    renderAdminCategories();
+    renderCategories();
+    toast('Categoria eliminata.');
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+saveAdminBlock = async function(e) {
+  e.preventDefault();
+  if (!isAdmin()) return toast('Solo admin.');
+  $('adminMessage').textContent = 'Salvataggio via Edge Function...';
+  try {
+    await adminEdge('admin-block-upsert', {
+      target_type: 'admin_block',
+      title: $('adminBlockTitle').value.trim() || 'Blocco admin',
+      location: $('adminBlockLocation').value,
+      html: $('adminHtml').value,
+      css: $('adminCss').value,
+      is_active: true
+    });
+    $('adminMessage').textContent = 'Blocco salvato.';
+    $('adminForm')?.reset();
+    $('adminPreview').innerHTML = '';
+    await loadAdminBlocksForPanel();
+    renderAdminBlocksPanel();
+    await loadAdminBlocks();
+  } catch (error) {
+    $('adminMessage').textContent = error.message;
+  }
+};
+
+adminToggleBlock = async function(id) {
+  const b = state.adminBlocksCache.find(x => x.id === id);
+  if (!b) return;
+  try {
+    await adminEdge('admin-block-upsert', { id, target_type: 'admin_block', ...b, is_active: !b.is_active });
+    await loadAdminBlocksForPanel();
+    renderAdminBlocksPanel();
+    await loadAdminBlocks();
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminDeleteBlock = async function(id) {
+  if (!confirm('Eliminare blocco HTML/CSS?')) return;
+  try {
+    await adminEdge('admin-block-delete', { id, target_type: 'admin_block' });
+    await loadAdminBlocksForPanel();
+    renderAdminBlocksPanel();
+    await loadAdminBlocks();
+  } catch (error) {
+    toast(error.message);
+  }
+};
+
+adminSaveRules = async function(e) {
+  e.preventDefault();
+  if (!isAdmin()) return;
+  try {
+    await adminEdge('save-rules', {
+      target_type: 'site_settings',
+      value: {
+        title: getInputValue('siteRulesTitle'),
+        body: getInputValue('siteRulesBody'),
+        updated_at: new Date().toISOString()
+      }
+    });
+    toast('Regole salvate.');
+  } catch (error) {
+    toast(error.message);
+  }
 };
 
 
