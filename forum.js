@@ -2389,5 +2389,61 @@ updateHero = function(cat) {
   if (icon) icon.innerHTML = categoryIconHtml(cat, 'hero-glyph');
 };
 
+/* ===================== INC FORUM V4.2: permission fixes ===================== */
+isAdmin = function() {
+  return ['owner', 'admin'].includes(String(state.profile?.role || '').toLowerCase());
+};
+
+isModerator = function() {
+  return String(state.profile?.role || '').toLowerCase() === 'moderator';
+};
+
+isStaff = function() {
+  return isAdmin() || isModerator();
+};
+
+isArtist = function() {
+  const role = String(state.profile?.role || '').toLowerCase();
+  return isStaff() || state.profile?.is_artist === true || userGroup() === 'artist' || role === 'artist';
+};
+
+canCreateInCategory = function(cat) {
+  if (!state.user) return false;
+  if (!cat || isReservedCategory(cat)) return false;
+  if (isStaff()) return true;
+  if (isAnnouncementCategory(cat)) return false;
+  if (isPromotionCategory(cat)) return isArtist();
+  return true;
+};
+
+function explainCategoryPermission(cat) {
+  if (!state.user) return 'Devi accedere per pubblicare.';
+  if (!cat) return 'Categoria non trovata: ricarica la pagina.';
+  if (isReservedCategory(cat)) return 'Questa sezione e riservata al sistema.';
+  if (isAnnouncementCategory(cat)) return 'Solo staff puo pubblicare annunci.';
+  if (isPromotionCategory(cat)) return 'Questa sezione richiede profilo artista o staff.';
+  return 'Non hai i permessi per pubblicare in questa categoria.';
+}
+
+const _openThreadComposerPermissionBase = openThreadComposer;
+openThreadComposer = function(sourceId) {
+  if (!state.user) return requireLogin();
+  if (sourceId === 'quickMusicBtn') return openSoundCardComposer();
+  const selected = categoryById(state.selectedCategoryId);
+  if (selected && !canCreateInCategory(selected)) return toast(explainCategoryPermission(selected));
+  return _openThreadComposerPermissionBase(sourceId);
+};
+
+const _createThreadPermissionBase = createThread;
+createThread = async function(e) {
+  const cat = categoryById(els.newCategory.value);
+  if (!canCreateInCategory(cat)) {
+    e.preventDefault();
+    els.threadMessage.textContent = explainCategoryPermission(cat);
+    return;
+  }
+  return _createThreadPermissionBase(e);
+};
+
 
 init();
