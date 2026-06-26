@@ -47,9 +47,18 @@
   <main class="layout">
     <aside class="left-rail">
       <button id="newThreadBtn" class="primary-btn full" type="button">＋ Nuova Discussione</button>
-      <button id="newSoundCardBtn" class="sound-btn full" type="button">◆ Nuova Sound Card</button>
 
-      <section class="panel">
+      <section class="sound-entry-card" id="openSoundHubCard" role="button" tabindex="0" aria-label="Apri Sound Cards">
+        <div class="sound-entry-orb">◆</div>
+        <div>
+          <span>Segnale 01</span>
+          <h2>Sound Cards</h2>
+          <p>Carte musicali + mappa MST per genere e affinità.</p>
+        </div>
+        <button id="newSoundCardBtn" class="sound-btn full" type="button">✦ Crea card</button>
+      </section>
+
+      <section class="panel categories-panel">
         <h2>Categorie</h2>
         <div id="categoryList" class="category-list" aria-live="polite"></div>
       </section>
@@ -116,30 +125,63 @@
       </section>
 
       <section id="soundCardsSection" class="soundcards-hub hidden" aria-live="polite">
-        <div class="sound-hero panel">
-          <div>
-            <p class="eyebrow">INC. Sound Cards</p>
-            <h2>Mappa viva dei brani della community</h2>
-            <p class="muted">Ogni brano diventa una carta. La mappa raggruppa le carte per genere principale e crea collegamenti più deboli quando condividono sottogenere, artista, collaborazioni o tag.</p>
-          </div>
-          <div class="sound-hero-actions">
-            <button id="createSoundCardBtn" class="primary-btn" type="button">◆ Crea Sound Card</button>
-            <button id="resetSoundMapBtn" class="secondary-btn" type="button">Ricentra mappa</button>
-          </div>
-        </div>
-        <div class="sound-layout">
-          <div class="sound-map-panel panel">
-            <div class="map-toolbar">
-              <strong>Genre MST</strong>
-              <span class="muted small">Trascina le carte. Doppio click per aprire.</span>
+        <section class="signal-hero-forum">
+          <div class="signal-copy">
+            <p class="eyebrow">Segnale 01 · Sound Cards · Community</p>
+            <h2>Costellazione musicale</h2>
+            <p class="tagline">Figurine musicali per scoprire, collegare, condividere.</p>
+            <p class="muted">Le Sound Cards non sono discussioni: sono carte permanenti dedicate a brani, singoli o album. Entrano automaticamente in una mappa MST/concettuale: collegamento forte se condividono il genere primario, medio se condividono sottogeneri o collaboratori, debole se condividono mood, tag o scena.</p>
+            <div class="signal-legend-mini">
+              <span><i class="legend-line strong"></i> Forte</span>
+              <span><i class="legend-line medium"></i> Medio</span>
+              <span><i class="legend-line weak"></i> Debole</span>
             </div>
-            <div id="soundMap" class="sound-map"></div>
           </div>
-          <aside class="sound-side panel">
-            <h2>Archivio Sound Cards</h2>
-            <label class="sound-filter">Filtro
-              <input id="soundSearchInput" type="search" placeholder="Cerca titolo, artista, genere...">
-            </label>
+          <aside class="signal-oracle-card compact-oracle">
+            <span class="release-kicker">Archivio vivo</span>
+            <h3>Ogni card resta nella mappa</h3>
+            <p>Gli utenti possono creare e consultare. Solo admin può nascondere, correggere o spostare in modo persistente i nodi.</p>
+            <button id="createSoundCardBtn" class="sound-primary" type="button">✦ Nuova Sound Card</button>
+          </aside>
+        </section>
+
+        <div class="signal-layout-forum">
+          <section class="signal-map-panel panel" aria-label="Mappa interattiva delle Sound Cards">
+            <div class="panel-header map-header">
+              <div>
+                <span class="release-kicker">Mappa interattiva</span>
+                <h3>Genre MST</h3>
+              </div>
+              <div class="map-actions">
+                <button class="ghost-button map-btn" id="centerSoundMapBtn" type="button">Centra</button>
+                <button class="ghost-button map-btn" id="resetSoundMapBtn" type="button">Riorganizza</button>
+              </div>
+            </div>
+
+            <div class="map-toolbar signal-toolbar">
+              <label>Filtra genere
+                <select id="soundGenreFilter"><option value="all">Tutti i generi</option></select>
+              </label>
+              <label>Cerca
+                <input id="soundSearchInput" type="search" placeholder="Brano, artista, genere, tag...">
+              </label>
+              <p class="map-help">Doppio click per aprire. Admin: trascina una card per salvarne la posizione.</p>
+            </div>
+
+            <div id="soundMap" class="sound-map signal-map">
+              <div class="constellation-bg" aria-hidden="true"></div>
+              <svg class="sound-links" id="soundLinks" aria-hidden="true"></svg>
+              <div class="sound-nodes" id="soundNodes"></div>
+            </div>
+          </section>
+
+          <aside class="signal-form-panel panel" aria-label="Archivio Sound Cards">
+            <div class="panel-header compact">
+              <div>
+                <span class="release-kicker">Archivio</span>
+                <h3>Sound Cards</h3>
+              </div>
+            </div>
             <div id="soundCardList" class="sound-card-list"></div>
           </aside>
         </div>
@@ -273,8 +315,8 @@
   <dialog id="soundCardDialog" class="modal">
     <form class="modal-card sound-card-form" id="soundCardForm">
       <button class="close-btn" type="button" id="closeSoundCardBtn">×</button>
-      <h2>Nuova Sound Card</h2>
-      <p class="muted">Compila i dati principali. L'estrazione automatica reale da Spotify/YouTube richiede API server-side; qui salviamo una scheda solida e modificabile.</p>
+      <h2>Deposita una Sound Card</h2>
+      <p class="muted">Questa non crea una discussione normale: salva una carta nella mappa e pubblica solo un riferimento nel feed generale.</p>
       <div class="sound-form-grid">
         <label>Link ascolto<input id="scUrl" type="url" placeholder="https://open.spotify.com/..." required></label>
         <label>Preview audio opzionale<input id="scPreviewUrl" type="url" placeholder="Link mp3/preview se disponibile"></label>

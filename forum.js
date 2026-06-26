@@ -481,4 +481,288 @@ async function saveAdminBlock(e){
   $('adminDialog')?.close(); await loadAdminBlocks(); toast('Blocco admin salvato');
 }
 
+
+
+/* ===================== INC FORUM V3.1: SOUND CARDS SEPARATE + SEGNALE MAP ===================== */
+state.soundGenreFilter = 'all';
+
+function isSoundCategory(cat){
+  return ['sound-cards','soundcards','sound_cards'].includes(String(cat?.slug || '').toLowerCase()) || String(cat?.name || '').toLowerCase().includes('sound cards');
+}
+
+function bindV3Events(){
+  $('navForum')?.addEventListener('click', e=>{ e.preventDefault(); showForumMode(); });
+  $('navSoundCards')?.addEventListener('click', e=>{ e.preventDefault(); showSoundCardsMode(); });
+  $('navAdmin')?.addEventListener('click', e=>{ e.preventDefault(); openAdminEditor(); });
+  $('openSoundHubCard')?.addEventListener('click', e=>{ if(e.target?.id !== 'newSoundCardBtn') showSoundCardsMode(); });
+  $('openSoundHubCard')?.addEventListener('keydown', e=>{ if(e.key === 'Enter') showSoundCardsMode(); });
+  $('newSoundCardBtn')?.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); openSoundCardComposer(); });
+  $('createSoundCardBtn')?.addEventListener('click', openSoundCardComposer);
+  $('resetSoundMapBtn')?.addEventListener('click', ()=>{ clearManualSoundPositions(); renderSoundCards(); });
+  $('centerSoundMapBtn')?.addEventListener('click', ()=>centerSoundMap());
+  $('soundSearchInput')?.addEventListener('input', e=>{ state.soundFilter=e.target.value.trim().toLowerCase(); renderSoundCards(); });
+  $('soundGenreFilter')?.addEventListener('change', e=>{ state.soundGenreFilter=e.target.value; renderSoundCards(); });
+  $('soundCardForm')?.addEventListener('submit', createSoundCard);
+  $('closeSoundCardBtn')?.addEventListener('click', ()=>$('soundCardDialog')?.close());
+  $('cancelSoundCardBtn')?.addEventListener('click', ()=>$('soundCardDialog')?.close());
+  $('adminForm')?.addEventListener('submit', saveAdminBlock);
+  $('closeAdminBtn')?.addEventListener('click', ()=>$('adminDialog')?.close());
+  $('cancelAdminBtn')?.addEventListener('click', ()=>$('adminDialog')?.close());
+  $('insertAdminTemplateBtn')?.addEventListener('click', insertAdminTemplate);
+  $('previewAdminBtn')?.addEventListener('click', previewAdminBlock);
+
+  // Il pulsante "Brano / progetto" del composer NON deve più aprire una discussione normale.
+  els.quickMusicBtn?.addEventListener('click', e=>{
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    openSoundCardComposer();
+  }, true);
+}
+
+function renderCategories() {
+  const visible = state.categories.filter(c=>!isSoundCategory(c));
+  els.categoryList.innerHTML = visible.map(cat => `<button class="category-item ${cat.id===state.selectedCategoryId?'active':''}" type="button" data-id="${cat.id}"><span class="left"><span>${escapeHtml(cat.icon)}</span>${escapeHtml(cat.name)}</span><span class="pill">${cat.thread_count || 0}</span></button>`).join('');
+  els.categoryList.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+    const cat = state.categories.find(c=>c.id===btn.dataset.id);
+    if(!cat) return;
+    state.selectedCategoryId = cat.id;
+    state.selectedCategorySlug = cat.slug;
+    showForumMode();
+    renderCategories();
+    updateHero(cat);
+    renderThreads();
+    closeThread();
+  }));
+  if(!visible.some(c=>c.id===state.selectedCategoryId) && visible[0]){
+    state.selectedCategoryId = visible[0].id;
+    state.selectedCategorySlug = visible[0].slug;
+  }
+  updateHero(state.categories.find(c=>c.id===state.selectedCategoryId));
+}
+
+function renderCategorySelect() {
+  els.newCategory.innerHTML = state.categories.filter(c=>!isSoundCategory(c)).map(c=>`<option value="${c.id}">${escapeHtml(c.icon)} ${escapeHtml(c.name)}</option>`).join('');
+}
+
+function showForumMode(){
+  state.currentMode='forum';
+  setNavActive('navForum');
+  $('soundCardsSection')?.classList.add('hidden');
+  document.querySelector('.hero-card')?.classList.remove('hidden');
+  document.querySelector('.composer-card')?.classList.remove('hidden');
+  document.querySelector('.tabs')?.classList.remove('hidden');
+  document.querySelector('.thread-list')?.classList.remove('hidden');
+  $('threadView')?.classList.toggle('hidden', !state.currentThread);
+  updateHero(state.categories.find(c=>c.id===state.selectedCategoryId));
+  loadAdminBlocks();
+}
+
+function showSoundCardsMode(){
+  state.currentMode='sound';
+  setNavActive('navSoundCards');
+  $('soundCardsSection')?.classList.remove('hidden');
+  document.querySelector('.hero-card')?.classList.add('hidden');
+  document.querySelector('.composer-card')?.classList.add('hidden');
+  document.querySelector('.tabs')?.classList.add('hidden');
+  document.querySelector('.thread-list')?.classList.add('hidden');
+  $('threadView')?.classList.add('hidden');
+  renderSoundGenreFilter();
+  renderSoundCards();
+  loadAdminBlocks();
+}
+
+function soundCardMatches(card){
+  const genreOK = !state.soundGenreFilter || state.soundGenreFilter === 'all' || String(card.main_genre || 'Altro') === state.soundGenreFilter;
+  if(!genreOK) return false;
+  if(!state.soundFilter) return true;
+  const hay = [card.title, card.artist, card.description, card.main_genre, ...(card.genres||[]), ...(card.subgenres||[]), ...(card.collaborators||[]), ...(card.tags||[])].join(' ').toLowerCase();
+  return hay.includes(state.soundFilter);
+}
+
+function renderSoundGenreFilter(){
+  const select = $('soundGenreFilter'); if(!select) return;
+  const genres = [...new Set((state.soundCards || []).map(c=>c.main_genre || 'Altro'))].sort((a,b)=>a.localeCompare(b));
+  const current = select.value || 'all';
+  select.innerHTML = `<option value="all">Tutti i generi</option>` + genres.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+  select.value = genres.includes(current) ? current : 'all';
+  state.soundGenreFilter = select.value;
+}
+
+function renderSoundCards(){
+  renderSoundGenreFilter();
+  const cards = (state.soundCards || []).filter(soundCardMatches);
+  renderSoundCardList(cards);
+  renderSoundMap(cards);
+}
+
+function renderSoundCardList(cards){
+  const host = $('soundCardList'); if(!host) return;
+  host.innerHTML = cards.map(c=>`
+    <article class="sound-card-mini signal-mini" data-id="${c.id}">
+      ${c.cover_url ? `<img src="${escapeHtml(c.cover_url)}" alt="${escapeHtml(c.title)}" loading="lazy">` : `<div class="mini-cover">◆</div>`}
+      <div><h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.artist)} · ${escapeHtml(c.main_genre || 'Senza genere')}</p></div>
+      <div class="mini-actions">
+        <a href="${escapeHtml(safeUrl(c.track_url))}" target="_blank" rel="noopener">Ascolta</a>
+        <button type="button" data-open="${c.id}">Apri card</button>
+        ${isAdmin()?`<button type="button" class="danger" data-hide="${c.id}">Nascondi</button>`:''}
+      </div>
+    </article>`).join('') || '<p class="muted small">Nessuna Sound Card trovata. Crea la prima: la mappa si genera appena esistono carte.</p>';
+  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSoundCardDetail(b.dataset.open)));
+  host.querySelectorAll('[data-hide]').forEach(b=>b.addEventListener('click',()=>hideSoundCard(b.dataset.hide)));
+}
+
+function tokenSet(card){
+  return lowerSet([...(card.genres||[]), ...(card.subgenres||[]), ...(card.collaborators||[]), ...(card.tags||[]), card.artist, card.metadata?.mood, card.metadata?.origin]);
+}
+
+function relationScore(a,b){
+  let score = 0;
+  const sameMain = String(a.main_genre||'').toLowerCase() === String(b.main_genre||'').toLowerCase() && String(a.main_genre||'').trim();
+  if (sameMain) score += .74;
+  const A = tokenSet(a), B = tokenSet(b);
+  let shared=0; A.forEach(x=>{ if(B.has(x)) shared++; });
+  score += Math.min(.32, shared * .08);
+  return Math.min(1, score);
+}
+
+function buildSoundEdges(cards){
+  const edges=[];
+  const byGenre = new Map();
+  cards.forEach(c=>{ const g=(c.main_genre||'Altro').toLowerCase(); if(!byGenre.has(g)) byGenre.set(g,[]); byGenre.get(g).push(c); });
+
+  // MST locale per ogni isola di genere: collega ogni card alla più affine già presente.
+  for(const group of byGenre.values()){
+    if(group.length < 2) continue;
+    const connected=[group[0]], remaining=group.slice(1);
+    while(remaining.length){
+      let best={i:0, a:connected[0], b:remaining[0], s:-1};
+      connected.forEach(a=>remaining.forEach((b,i)=>{ const s=relationScore(a,b); if(s>best.s) best={i,a,b,s}; }));
+      edges.push({a:best.a.id,b:best.b.id,score:Math.max(.82,best.s),type:'strong'});
+      connected.push(best.b); remaining.splice(best.i,1);
+    }
+  }
+
+  // Ponti tra isole: pochi, deboli/medi, solo se c'è affinità reale.
+  const cross=[];
+  for(let i=0;i<cards.length;i++) for(let j=i+1;j<cards.length;j++){
+    if(String(cards[i].main_genre||'').toLowerCase() === String(cards[j].main_genre||'').toLowerCase()) continue;
+    const s=relationScore(cards[i],cards[j]);
+    if(s>=.08) cross.push({a:cards[i].id,b:cards[j].id,score:s,type:s>=.30?'medium':'weak'});
+  }
+  cross.sort((x,y)=>y.score-x.score);
+  return edges.concat(cross.slice(0, Math.min(cross.length, Math.max(4, Math.ceil(cards.length*1.2)))));
+}
+
+function positionCards(cards, w, h){
+  const genres=[...new Set(cards.map(c=>c.main_genre||'Altro'))];
+  const centers=new Map();
+  const R=Math.min(w,h)*.30;
+  genres.forEach((g,i)=>{ const a=(Math.PI*2*i/Math.max(1,genres.length))-Math.PI/2; centers.set(g,{x:w/2+Math.cos(a)*R,y:h/2+Math.sin(a)*R}); });
+  const counts={};
+  return cards.map((c)=>{
+    const g=c.main_genre||'Altro'; const n=counts[g]=(counts[g]||0)+1; const center=centers.get(g) || {x:w/2,y:h/2}; const a=n*2.399963; const r=80+44*Math.sqrt(n);
+    const manualX = Number(c.map_x), manualY = Number(c.map_y);
+    return {...c, _x: manualX || center.x + Math.cos(a)*r, _y: manualY || center.y + Math.sin(a)*r, _genreCx:center.x, _genreCy:center.y};
+  });
+}
+
+function clearManualSoundPositions(){
+  state.soundCards = state.soundCards.map(c=>({...c, map_x:null, map_y:null}));
+}
+
+function renderSoundMap(cards){
+  const host=$('soundMap'); if(!host) return;
+  const nodesLayer = $('soundNodes'); const linksSvg = $('soundLinks');
+  if(!nodesLayer || !linksSvg) return;
+  const rect = host.getBoundingClientRect(); const w = Math.max(rect.width || 900, 760), h = Math.max(rect.height || 680, 620);
+  linksSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  linksSvg.setAttribute('width', w); linksSvg.setAttribute('height', h);
+
+  if(!cards.length){
+    linksSvg.innerHTML='';
+    nodesLayer.innerHTML='<div class="sound-empty-map"><h3>Nessuna Sound Card</h3><p>Crea una card: apparirà qui come nodo della costellazione.</p></div>';
+    return;
+  }
+
+  const placed = positionCards(cards, w, h); const byId = new Map(placed.map(c=>[c.id,c])); const edges = buildSoundEdges(placed);
+  linksSvg.innerHTML = edges.map(e=>{ const a=byId.get(e.a), b=byId.get(e.b); if(!a||!b) return ''; return `<line class="sound-link ${e.type}" data-a="${e.a}" data-b="${e.b}" x1="${a._x}" y1="${a._y}" x2="${b._x}" y2="${b._y}"/>`; }).join('');
+  nodesLayer.innerHTML = placed.map(c=>`
+    <article class="sound-node signal-node" data-id="${c.id}" style="left:${c._x}px;top:${c._y}px">
+      <div class="sound-node-cover">${c.cover_url ? `<img src="${escapeHtml(c.cover_url)}" alt="${escapeHtml(c.title)}" loading="lazy">` : `<span>◆</span>`}</div>
+      <div class="sound-node-body">
+        <strong class="sound-node-title">${escapeHtml(c.title)}</strong>
+        <span class="sound-node-artist">${escapeHtml(c.artist)}</span>
+        <div class="sound-node-tags"><span>${escapeHtml(c.main_genre || 'Altro')}</span>${(c.subgenres||[]).slice(0,2).map(x=>`<span>${escapeHtml(x)}</span>`).join('')}</div>
+      </div>
+    </article>`).join('');
+  nodesLayer.querySelectorAll('.sound-node').forEach(node=>makeSoundNodeDraggable(node, host));
+}
+
+function makeSoundNodeDraggable(node, host){
+  let dragging=false, moved=false, dx=0, dy=0;
+  const id=node.dataset.id;
+  node.addEventListener('dblclick',()=>openSoundCardDetail(id));
+  node.addEventListener('click',()=>{ if(!moved) openSoundCardDetail(id); });
+  node.addEventListener('pointerdown', e=>{ dragging=true; moved=false; node.setPointerCapture(e.pointerId); const r=node.getBoundingClientRect(); dx=e.clientX-r.left-r.width/2; dy=e.clientY-r.top-r.height/2; });
+  node.addEventListener('pointermove', e=>{ if(!dragging) return; moved=true; const hr=host.getBoundingClientRect(); const x=e.clientX-hr.left-dx; const y=e.clientY-hr.top-dy; node.style.left=x+'px'; node.style.top=y+'px'; updateSoundLines(id,x,y,host); });
+  node.addEventListener('pointerup', async e=>{ if(!dragging) return; dragging=false; try{ node.releasePointerCapture(e.pointerId); }catch{} if(isAdmin() && moved){ const x=parseFloat(node.style.left), y=parseFloat(node.style.top); await db.from('sound_cards').update({map_x:x,map_y:y}).eq('id',id); } setTimeout(()=>{moved=false;},0); });
+}
+
+function centerSoundMap(){
+  const host=$('soundMap'); if(!host) return;
+  host.scrollTo?.({left:0, top:0, behavior:'smooth'});
+}
+
+async function createSoundCard(e){
+  e.preventDefault(); if(!state.user) return requireLogin();
+  $('soundCardMessage').textContent='Salvataggio Sound Card nella mappa...';
+  const main = $('scMainGenre').value.trim();
+  const sub = csv($('scSubgenres').value); const collabs = csv($('scCollaborators').value);
+  const genres = [...new Set([main, ...sub].filter(Boolean))];
+  const payload={
+    author_id:state.user.id,
+    track_url:safeUrl($('scUrl').value.trim()),
+    platform:platformFromUrl($('scUrl').value.trim()),
+    preview_url:safeUrl($('scPreviewUrl').value.trim())||null,
+    title:$('scTitle').value.trim(),
+    artist:$('scArtist').value.trim(),
+    description:$('scDescription').value.trim(),
+    cover_url:safeUrl($('scCoverUrl').value.trim())||null,
+    genres,
+    main_genre:main,
+    subgenres:sub,
+    collaborators:collabs,
+    tags:extractTags(`${$('scDescription').value} ${main} ${sub.join(' ')} ${collabs.join(' ')}`)
+  };
+  const { data, error } = await db.from('sound_cards').insert(payload).select('*').single();
+  if(error){ $('soundCardMessage').textContent=error.message; return; }
+
+  // Feed generale: crea SOLO un riferimento social, non una categoria Sound Cards e non un thread mascherato da card.
+  const cat = state.categories.find(c=>['musica','generale','feedback-brani'].includes(c.slug) && !isSoundCategory(c)) || state.categories.find(c=>!isSoundCategory(c));
+  if(cat){
+    await db.from('threads').insert({
+      category_id:cat.id,
+      author_id:state.user.id,
+      title:`◆ ${payload.title} — ${payload.artist}`,
+      body:`Sound Card pubblicata nella mappa Segnale 01.\n\n${payload.description || ''}`,
+      media_items:[{type:'sound_card', sound_card_id:data.id, url:payload.track_url, title:payload.title}],
+      tags:[...payload.tags, 'soundcard']
+    });
+  }
+  $('soundCardDialog')?.close();
+  await Promise.all([loadSoundCards(), loadThreads(), loadStats(), loadLivePanels()]);
+  toast('Sound Card creata: ora è nella mappa Segnale 01');
+  showSoundCardsMode();
+}
+
+function openSoundCardDetail(id){
+  const c = state.soundCards.find(x=>x.id===id); if(!c) return;
+  let dlg=$('soundDetailDialog');
+  if(!dlg){ dlg=document.createElement('dialog'); dlg.id='soundDetailDialog'; dlg.className='modal'; document.body.appendChild(dlg); }
+  const chips=[c.main_genre, ...(c.subgenres||[]), ...(c.collaborators||[])].filter(Boolean).map(x=>`<span>${escapeHtml(x)}</span>`).join('');
+  const preview = c.preview_url ? `<audio controls src="${escapeHtml(safeUrl(c.preview_url))}" style="width:100%;margin-top:18px"></audio>` : '';
+  dlg.innerHTML=`<div class="modal-card sound-detail-shell"><button class="close-btn" type="button" id="closeSoundDetailBtn">×</button><div class="sound-modal-card signal-detail">${c.cover_url?`<img class="sound-modal-cover" src="${escapeHtml(c.cover_url)}" alt="${escapeHtml(c.title)}">`:`<div class="sound-modal-cover empty-cover">◆</div>`}<div><p class="eyebrow">${escapeHtml(c.platform||'Sound Card')}</p><h2>${escapeHtml(c.title)}</h2><h3>${escapeHtml(c.artist)}</h3><div class="sound-meta">${chips}</div><p class="muted">${escapeHtml(c.description||'Nessuna descrizione inserita.')}</p>${preview}<a class="sound-primary sound-platform-link" href="${escapeHtml(safeUrl(c.track_url))}" target="_blank" rel="noopener">Apri piattaforma</a></div></div></div>`;
+  $('closeSoundDetailBtn').addEventListener('click',()=>dlg.close()); dlg.showModal();
+}
+
 init();
