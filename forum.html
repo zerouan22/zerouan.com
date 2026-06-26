@@ -21,7 +21,9 @@
     </a>
 
     <nav class="main-nav" aria-label="Navigazione principale">
-      <a class="active" href="forum.html">Forum</a>
+      <a class="active" href="forum.html" id="navForum">Forum</a>
+      <a href="#sound-cards" id="navSoundCards">Sound Cards</a>
+      <a href="#admin" id="navAdmin" class="hidden">Admin</a>
       <!--<a href="guide.html">Guide</a>
       <a href="blog.html">Blog</a>
       <a href="risorse.html">Risorse</a>
@@ -45,6 +47,7 @@
   <main class="layout">
     <aside class="left-rail">
       <button id="newThreadBtn" class="primary-btn full" type="button">＋ Nuova Discussione</button>
+      <button id="newSoundCardBtn" class="sound-btn full" type="button">◆ Nuova Sound Card</button>
 
       <section class="panel">
         <h2>Categorie</h2>
@@ -67,6 +70,8 @@
     </aside>
 
     <section class="content">
+      <div id="adminBlocksHost" class="admin-blocks-host"></div>
+
       <div class="hero-card">
         <div class="hero-title-row">
           <div class="category-icon">🎛️</div>
@@ -107,6 +112,36 @@
         <div id="emptyThreads" class="empty hidden">
           <h3>Nessuna discussione trovata</h3>
           <p>Apri tu la prima discussione in questa categoria.</p>
+        </div>
+      </section>
+
+      <section id="soundCardsSection" class="soundcards-hub hidden" aria-live="polite">
+        <div class="sound-hero panel">
+          <div>
+            <p class="eyebrow">INC. Sound Cards</p>
+            <h2>Mappa viva dei brani della community</h2>
+            <p class="muted">Ogni brano diventa una carta. La mappa raggruppa le carte per genere principale e crea collegamenti più deboli quando condividono sottogenere, artista, collaborazioni o tag.</p>
+          </div>
+          <div class="sound-hero-actions">
+            <button id="createSoundCardBtn" class="primary-btn" type="button">◆ Crea Sound Card</button>
+            <button id="resetSoundMapBtn" class="secondary-btn" type="button">Ricentra mappa</button>
+          </div>
+        </div>
+        <div class="sound-layout">
+          <div class="sound-map-panel panel">
+            <div class="map-toolbar">
+              <strong>Genre MST</strong>
+              <span class="muted small">Trascina le carte. Doppio click per aprire.</span>
+            </div>
+            <div id="soundMap" class="sound-map"></div>
+          </div>
+          <aside class="sound-side panel">
+            <h2>Archivio Sound Cards</h2>
+            <label class="sound-filter">Filtro
+              <input id="soundSearchInput" type="search" placeholder="Cerca titolo, artista, genere...">
+            </label>
+            <div id="soundCardList" class="sound-card-list"></div>
+          </aside>
         </div>
       </section>
 
@@ -232,6 +267,54 @@
         <button class="primary-btn" type="submit">Pubblica</button>
       </div>
       <p id="threadMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <dialog id="soundCardDialog" class="modal">
+    <form class="modal-card sound-card-form" id="soundCardForm">
+      <button class="close-btn" type="button" id="closeSoundCardBtn">×</button>
+      <h2>Nuova Sound Card</h2>
+      <p class="muted">Compila i dati principali. L'estrazione automatica reale da Spotify/YouTube richiede API server-side; qui salviamo una scheda solida e modificabile.</p>
+      <div class="sound-form-grid">
+        <label>Link ascolto<input id="scUrl" type="url" placeholder="https://open.spotify.com/..." required></label>
+        <label>Preview audio opzionale<input id="scPreviewUrl" type="url" placeholder="Link mp3/preview se disponibile"></label>
+        <label>Titolo<input id="scTitle" type="text" maxlength="120" required></label>
+        <label>Artista<input id="scArtist" type="text" maxlength="120" required></label>
+        <label>Cover URL<input id="scCoverUrl" type="url" placeholder="https://...jpg/png"></label>
+        <label>Genere principale<input id="scMainGenre" type="text" maxlength="60" placeholder="Alternative Rap" required></label>
+        <label>Sottogeneri<input id="scSubgenres" type="text" placeholder="Trip hop, techno, boom bap"></label>
+        <label>Collaboratori<input id="scCollaborators" type="text" placeholder="feat. Nome, Producer"></label>
+      </div>
+      <label>Descrizione / storia breve<textarea id="scDescription" rows="5" maxlength="1200" placeholder="Contesto, influenza, storia del brano..."></textarea></label>
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelSoundCardBtn">Annulla</button>
+        <button class="primary-btn" type="submit">Pubblica Sound Card</button>
+      </div>
+      <p id="soundCardMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <dialog id="adminDialog" class="modal">
+    <form class="modal-card admin-card" id="adminForm">
+      <button class="close-btn" type="button" id="closeAdminBtn">×</button>
+      <h2>Admin editor</h2>
+      <p class="muted">Editor interno per blocchi HTML/CSS del forum. Visibile solo ai profili con <code>role = admin</code>.</p>
+      <div class="admin-grid">
+        <label>Titolo blocco<input id="adminBlockTitle" type="text" maxlength="90" placeholder="Banner release, regole, promo..."></label>
+        <label>Posizione<select id="adminBlockLocation"><option value="forum_top">Sopra feed forum</option><option value="sound_top">Sopra Sound Cards</option></select></label>
+      </div>
+      <label>HTML<textarea id="adminHtml" rows="8" spellcheck="false" placeholder="<section class=&quot;custom-card&quot;>...</section>"></textarea></label>
+      <label>CSS<textarea id="adminCss" rows="6" spellcheck="false" placeholder=".custom-card { ... }"></textarea></label>
+      <div class="admin-tools">
+        <button class="tool-btn" type="button" id="insertAdminTemplateBtn">Inserisci template card</button>
+        <button class="tool-btn" type="button" id="previewAdminBtn">Anteprima</button>
+      </div>
+      <div id="adminPreview" class="admin-preview"></div>
+      <div class="modal-actions">
+        <button class="secondary-btn" type="button" id="cancelAdminBtn">Annulla</button>
+        <button class="primary-btn" type="submit">Salva blocco</button>
+      </div>
+      <p id="adminMessage" class="form-message"></p>
     </form>
   </dialog>
 

@@ -70,9 +70,10 @@ function renderAvatar(el, profile, fallbackName) {
 
 async function init() {
   bindEvents();
+  bindV3Events();
   applySavedTheme();
   await loadSession();
-  await Promise.all([loadCategories(), loadStats(), loadLivePanels(), loadThreads()]);
+  await Promise.all([loadCategories(), loadStats(), loadLivePanels(), loadThreads(), loadSoundCards(), loadAdminBlocks()]);
   subscribeRealtime();
   startHeartbeat();
 }
@@ -109,6 +110,7 @@ function renderAuthState() {
   const logged = !!state.user; els.openAuthBtn.classList.toggle('hidden', logged); els.logoutBtn.classList.toggle('hidden', !logged); els.openProfileBtn.classList.toggle('hidden', !logged);
   const name = state.profile?.display_name || state.user?.email?.split('@')[0] || 'Ospite'; els.userBadge.textContent = logged ? name : 'Ospite';
   renderAvatar(els.openProfileBtn, state.profile, name); renderAvatar(els.composerAvatar, state.profile, name);
+  const navAdmin = $('navAdmin'); if (navAdmin) navAdmin.classList.toggle('hidden', !isAdmin());
 }
 async function login() {
   els.authMessage.textContent = 'Accesso in corso...';
@@ -283,7 +285,200 @@ function subscribeRealtime() {
     .on('postgres_changes',{event:'*',schema:'public',table:'threads'}, async()=>{ await Promise.all([loadThreads(),loadCategories(),loadStats(),loadLivePanels()]); })
     .on('postgres_changes',{event:'*',schema:'public',table:'posts'}, async()=>{ if(state.currentThread) await loadPosts(state.currentThread.id); await Promise.all([loadThreads(),loadCategories(),loadStats(),loadLivePanels()]); })
     .on('postgres_changes',{event:'*',schema:'public',table:'profiles'}, async()=>{ await loadLivePanels(); })
+    .on('postgres_changes',{event:'*',schema:'public',table:'sound_cards'}, async()=>{ await loadSoundCards(); })
+    .on('postgres_changes',{event:'*',schema:'public',table:'admin_blocks'}, async()=>{ await loadAdminBlocks(); })
     .subscribe();
+}
+
+
+/* ===================== INC FORUM V3: SOUND CARDS + ADMIN ===================== */
+state.soundCards = [];
+state.adminBlocks = [];
+state.soundFilter = '';
+state.currentMode = 'forum';
+
+function isAdmin(){ return state.profile?.role === 'admin'; }
+function csv(value){ return String(value || '').split(',').map(x=>x.trim()).filter(Boolean); }
+function lowerSet(arr){ return new Set((arr || []).map(x=>String(x).trim().toLowerCase()).filter(Boolean)); }
+function platformFromUrl(url){ const u = safeUrl(url); if(!u) return 'link'; if(u.includes('open.spotify.com')) return 'Spotify'; if(u.includes('youtube.com') || u.includes('youtu.be')) return 'YouTube'; if(u.includes('soundcloud.com')) return 'SoundCloud'; if(u.includes('bandcamp.com')) return 'Bandcamp'; return 'Link'; }
+
+function bindV3Events(){
+  $('navForum')?.addEventListener('click', e=>{ e.preventDefault(); showForumMode(); });
+  $('navSoundCards')?.addEventListener('click', e=>{ e.preventDefault(); showSoundCardsMode(); });
+  $('navAdmin')?.addEventListener('click', e=>{ e.preventDefault(); openAdminEditor(); });
+  $('newSoundCardBtn')?.addEventListener('click', openSoundCardComposer);
+  $('createSoundCardBtn')?.addEventListener('click', openSoundCardComposer);
+  $('resetSoundMapBtn')?.addEventListener('click', ()=>renderSoundCards());
+  $('soundSearchInput')?.addEventListener('input', e=>{ state.soundFilter=e.target.value.trim().toLowerCase(); renderSoundCards(); });
+  $('soundCardForm')?.addEventListener('submit', createSoundCard);
+  $('closeSoundCardBtn')?.addEventListener('click', ()=>$('soundCardDialog')?.close());
+  $('cancelSoundCardBtn')?.addEventListener('click', ()=>$('soundCardDialog')?.close());
+  $('adminForm')?.addEventListener('submit', saveAdminBlock);
+  $('closeAdminBtn')?.addEventListener('click', ()=>$('adminDialog')?.close());
+  $('cancelAdminBtn')?.addEventListener('click', ()=>$('adminDialog')?.close());
+  $('insertAdminTemplateBtn')?.addEventListener('click', insertAdminTemplate);
+  $('previewAdminBtn')?.addEventListener('click', previewAdminBlock);
+}
+
+function setNavActive(id){ document.querySelectorAll('.main-nav a').forEach(a=>a.classList.remove('active')); $(id)?.classList.add('active'); }
+function showForumMode(){ state.currentMode='forum'; setNavActive('navForum'); $('soundCardsSection')?.classList.add('hidden'); document.querySelector('.composer-card')?.classList.remove('hidden'); document.querySelector('.tabs')?.classList.remove('hidden'); document.querySelector('.thread-list')?.classList.remove('hidden'); $('threadView')?.classList.toggle('hidden', !state.currentThread); updateHero(state.categories.find(c=>c.id===state.selectedCategoryId)); loadAdminBlocks(); }
+function showSoundCardsMode(){ state.currentMode='sound'; setNavActive('navSoundCards'); $('soundCardsSection')?.classList.remove('hidden'); document.querySelector('.composer-card')?.classList.add('hidden'); document.querySelector('.tabs')?.classList.add('hidden'); document.querySelector('.thread-list')?.classList.add('hidden'); $('threadView')?.classList.add('hidden'); $('currentSection').textContent='INC. Sound Cards'; $('pageTitle').textContent='Sound Cards Map'; $('pageSubtitle').textContent='Carte musicali, preview, link e mappa concettuale per genere e affinità.'; renderSoundCards(); loadAdminBlocks(); }
+
+async function loadSoundCards(){
+  const { data, error } = await db.from('sound_cards').select('*').eq('is_hidden', false).order('created_at', {ascending:false}).limit(500);
+  if (error) { console.warn('sound_cards:', error.message); return; }
+  state.soundCards = data || [];
+  renderSoundCards();
+}
+
+function soundCardMatches(card){
+  if(!state.soundFilter) return true;
+  const hay = [card.title, card.artist, card.description, card.main_genre, ...(card.genres||[]), ...(card.subgenres||[]), ...(card.collaborators||[]), ...(card.tags||[])].join(' ').toLowerCase();
+  return hay.includes(state.soundFilter);
+}
+
+function renderSoundCards(){
+  const cards = (state.soundCards || []).filter(soundCardMatches);
+  renderSoundCardList(cards);
+  renderSoundMap(cards);
+}
+
+function renderSoundCardList(cards){
+  const host = $('soundCardList'); if(!host) return;
+  host.innerHTML = cards.map(c=>`
+    <article class="sound-card-mini" data-id="${c.id}">
+      ${c.cover_url ? `<img src="${escapeHtml(c.cover_url)}" alt="${escapeHtml(c.title)}" loading="lazy">` : `<div class="mini-cover"></div>`}
+      <div><h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.artist)} · ${escapeHtml(c.main_genre || 'Senza genere')}</p></div>
+      <div class="mini-actions">
+        <a href="${escapeHtml(safeUrl(c.track_url))}" target="_blank" rel="noopener">Ascolta</a>
+        <button type="button" data-open="${c.id}">Apri</button>
+        ${isAdmin()?`<button type="button" class="danger" data-hide="${c.id}">Nascondi</button>`:''}
+      </div>
+    </article>`).join('') || '<p class="muted small">Nessuna Sound Card trovata.</p>';
+  host.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>openSoundCardDetail(b.dataset.open)));
+  host.querySelectorAll('[data-hide]').forEach(b=>b.addEventListener('click',()=>hideSoundCard(b.dataset.hide)));
+}
+
+function relationScore(a,b){
+  let score = 0;
+  if ((a.main_genre||'').toLowerCase() && (a.main_genre||'').toLowerCase()===(b.main_genre||'').toLowerCase()) score += .70;
+  const A = lowerSet([...(a.genres||[]), ...(a.subgenres||[]), ...(a.collaborators||[]), ...(a.tags||[]), a.artist]);
+  const B = lowerSet([...(b.genres||[]), ...(b.subgenres||[]), ...(b.collaborators||[]), ...(b.tags||[]), b.artist]);
+  let shared=0; A.forEach(x=>{ if(B.has(x)) shared++; });
+  score += Math.min(.28, shared * .07);
+  return Math.min(1, score);
+}
+
+function buildSoundEdges(cards){
+  const edges=[];
+  const byGenre = new Map();
+  cards.forEach(c=>{ const g=(c.main_genre||'Altro').toLowerCase(); if(!byGenre.has(g)) byGenre.set(g,[]); byGenre.get(g).push(c); });
+  for(const group of byGenre.values()){
+    for(let i=1;i<group.length;i++) edges.push({a:group[i-1].id,b:group[i].id,score:.88,type:'strong'});
+  }
+  const cross=[];
+  for(let i=0;i<cards.length;i++) for(let j=i+1;j<cards.length;j++){
+    const s=relationScore(cards[i],cards[j]);
+    if(s>=.18 && (cards[i].main_genre||'').toLowerCase() !== (cards[j].main_genre||'').toLowerCase()) cross.push({a:cards[i].id,b:cards[j].id,score:s,type:s>.38?'medium':'weak'});
+  }
+  cross.sort((x,y)=>y.score-x.score);
+  return edges.concat(cross.slice(0, Math.max(3, Math.ceil(cards.length*1.5))));
+}
+
+function positionCards(cards, w, h){
+  const genres=[...new Set(cards.map(c=>c.main_genre||'Altro'))];
+  const centers=new Map();
+  const R=Math.min(w,h)*.30;
+  genres.forEach((g,i)=>{ const a=(Math.PI*2*i/Math.max(1,genres.length))-Math.PI/2; centers.set(g,{x:w/2+Math.cos(a)*R,y:h/2+Math.sin(a)*R}); });
+  const counts={};
+  return cards.map((c)=>{
+    const g=c.main_genre||'Altro'; const n=counts[g]=(counts[g]||0)+1; const center=centers.get(g); const a=n*2.399963; const r=36+18*Math.sqrt(n);
+    return {...c, _x: Number(c.map_x) || center.x + Math.cos(a)*r, _y: Number(c.map_y) || center.y + Math.sin(a)*r};
+  });
+}
+
+function renderSoundMap(cards){
+  const host=$('soundMap'); if(!host) return;
+  const rect = host.getBoundingClientRect(); const w = rect.width || 900, h = rect.height || 620;
+  const placed = positionCards(cards, w, h); const byId = new Map(placed.map(c=>[c.id,c])); const edges = buildSoundEdges(placed);
+  const lines = edges.map(e=>{ const a=byId.get(e.a), b=byId.get(e.b); if(!a||!b) return ''; const op=e.type==='strong'?'.72':e.type==='medium'?'.38':'.18'; const dash=e.type==='weak'?'6 8':'none'; const width=e.type==='strong'?'3':e.type==='medium'?'2':'1.3'; return `<line data-a="${e.a}" data-b="${e.b}" x1="${a._x}" y1="${a._y}" x2="${b._x}" y2="${b._y}" stroke="currentColor" stroke-width="${width}" stroke-opacity="${op}" stroke-dasharray="${dash}"/>`; }).join('');
+  host.innerHTML = `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true">${lines}</svg>` + placed.map(c=>`
+    <article class="sound-node" data-id="${c.id}" style="left:${c._x}px;top:${c._y}px">
+      ${c.cover_url ? `<img class="cover" src="${escapeHtml(c.cover_url)}" alt="${escapeHtml(c.title)}" loading="lazy">` : `<div class="cover"></div>`}
+      <h3>${escapeHtml(c.title)}</h3><p>${escapeHtml(c.artist)}</p><span class="genre-chip">${escapeHtml(c.main_genre || 'Altro')}</span>
+    </article>`).join('');
+  host.querySelectorAll('.sound-node').forEach(node=>makeSoundNodeDraggable(node, host));
+}
+
+function makeSoundNodeDraggable(node, host){
+  let dragging=false, dx=0, dy=0;
+  const id=node.dataset.id;
+  node.addEventListener('dblclick',()=>openSoundCardDetail(id));
+  node.addEventListener('pointerdown', e=>{ dragging=true; node.setPointerCapture(e.pointerId); const r=node.getBoundingClientRect(); dx=e.clientX-r.left-r.width/2; dy=e.clientY-r.top-r.height/2; });
+  node.addEventListener('pointermove', e=>{ if(!dragging) return; const hr=host.getBoundingClientRect(); const x=e.clientX-hr.left-dx; const y=e.clientY-hr.top-dy; node.style.left=x+'px'; node.style.top=y+'px'; updateSoundLines(id,x,y,host); });
+  node.addEventListener('pointerup', async e=>{ if(!dragging) return; dragging=false; try{ node.releasePointerCapture(e.pointerId); }catch{} if(isAdmin()){ const x=parseFloat(node.style.left), y=parseFloat(node.style.top); await db.from('sound_cards').update({map_x:x,map_y:y}).eq('id',id); } });
+}
+function updateSoundLines(id,x,y,host){ host.querySelectorAll(`line[data-a="${id}"]`).forEach(l=>{l.setAttribute('x1',x);l.setAttribute('y1',y);}); host.querySelectorAll(`line[data-b="${id}"]`).forEach(l=>{l.setAttribute('x2',x);l.setAttribute('y2',y);}); }
+
+function openSoundCardComposer(){
+  if(!state.user) return requireLogin();
+  $('soundCardForm')?.reset(); $('soundCardMessage').textContent=''; $('soundCardDialog')?.showModal();
+}
+
+async function createSoundCard(e){
+  e.preventDefault(); if(!state.user) return requireLogin();
+  $('soundCardMessage').textContent='Salvataggio Sound Card...';
+  const main = $('scMainGenre').value.trim();
+  const sub = csv($('scSubgenres').value); const collabs = csv($('scCollaborators').value);
+  const genres = [...new Set([main, ...sub].filter(Boolean))];
+  const payload={ author_id:state.user.id, track_url:safeUrl($('scUrl').value.trim()), platform:platformFromUrl($('scUrl').value.trim()), preview_url:safeUrl($('scPreviewUrl').value.trim())||null, title:$('scTitle').value.trim(), artist:$('scArtist').value.trim(), description:$('scDescription').value.trim(), cover_url:safeUrl($('scCoverUrl').value.trim())||null, genres, main_genre:main, subgenres:sub, collaborators:collabs, tags:extractTags(`${$('scDescription').value} ${main} ${sub.join(' ')}`) };
+  const { data, error } = await db.from('sound_cards').insert(payload).select('*').single();
+  if(error){ $('soundCardMessage').textContent=error.message; return; }
+  const cat = state.categories.find(c=>['musica','generale','feedback-brani'].includes(c.slug)) || state.categories[0];
+  if(cat){
+    await db.from('threads').insert({ category_id:cat.id, author_id:state.user.id, title:`Sound Card: ${payload.title} — ${payload.artist}`, body:payload.description || `Nuova Sound Card condivisa: ${payload.title} di ${payload.artist}.`, media_items:[{type:'sound_card', sound_card_id:data.id, url:payload.track_url, title:payload.title}], tags:payload.tags });
+  }
+  $('soundCardDialog')?.close(); await Promise.all([loadSoundCards(), loadThreads(), loadStats(), loadLivePanels()]); toast('Sound Card pubblicata e collegata al feed'); showSoundCardsMode();
+}
+
+function openSoundCardDetail(id){
+  const c = state.soundCards.find(x=>x.id===id); if(!c) return;
+  let dlg=$('soundDetailDialog');
+  if(!dlg){ dlg=document.createElement('dialog'); dlg.id='soundDetailDialog'; dlg.className='modal'; document.body.appendChild(dlg); }
+  const chips=[c.main_genre, ...(c.subgenres||[]), ...(c.collaborators||[])].filter(Boolean).map(x=>`<span>${escapeHtml(x)}</span>`).join('');
+  const preview = c.preview_url ? `<audio controls src="${escapeHtml(safeUrl(c.preview_url))}" style="width:100%;margin-top:12px"></audio>` : '';
+  dlg.innerHTML=`<div class="modal-card"><button class="close-btn" type="button" id="closeSoundDetailBtn">×</button><div class="sound-modal-card">${c.cover_url?`<img class="sound-modal-cover" src="${escapeHtml(c.cover_url)}" alt="${escapeHtml(c.title)}">`:`<div class="sound-modal-cover"></div>`}<div><p class="eyebrow">${escapeHtml(c.platform||'Sound Card')}</p><h2>${escapeHtml(c.title)}</h2><h3>${escapeHtml(c.artist)}</h3><div class="sound-meta">${chips}</div><p class="muted">${escapeHtml(c.description||'Nessuna descrizione inserita.')}</p>${preview}<a class="primary-btn sound-platform-link" href="${escapeHtml(safeUrl(c.track_url))}" target="_blank" rel="noopener">Apri piattaforma</a></div></div></div>`;
+  $('closeSoundDetailBtn').addEventListener('click',()=>dlg.close()); dlg.showModal();
+}
+
+async function hideSoundCard(id){
+  if(!isAdmin()) return toast('Solo admin.');
+  if(!confirm('Nascondere questa Sound Card dalla mappa?')) return;
+  const { error } = await db.from('sound_cards').update({is_hidden:true}).eq('id',id);
+  if(error) return toast(error.message); await loadSoundCards(); toast('Sound Card nascosta');
+}
+
+async function loadAdminBlocks(){
+  const { data, error } = await db.from('admin_blocks').select('*').eq('is_active', true).order('sort_order');
+  if(error){ console.warn('admin_blocks:', error.message); return; }
+  state.adminBlocks=data||[]; renderAdminBlocks();
+}
+function renderAdminBlocks(){
+  const host=$('adminBlocksHost'); if(!host) return;
+  const loc = state.currentMode === 'sound' ? 'sound_top' : 'forum_top';
+  const blocks=state.adminBlocks.filter(b=>b.location===loc);
+  host.innerHTML = blocks.map(b=>`<section class="admin-block" data-block="${b.id}">${b.css?`<style>${b.css}</style>`:''}${b.html||''}</section>`).join('');
+}
+function openAdminEditor(){ if(!isAdmin()) return toast('Accesso admin richiesto.'); $('adminForm')?.reset(); $('adminPreview').innerHTML=''; $('adminMessage').textContent=''; $('adminDialog')?.showModal(); }
+function insertAdminTemplate(){ $('adminHtml').value = `<div class="custom-card">\n  <p class="eyebrow">INC. Update</p>\n  <h2>Titolo blocco</h2>\n  <p>Testo del blocco admin. Puoi aggiungere link, immagini leggere o call-to-action.</p>\n</div>`; $('adminCss').value = `.custom-card{padding:22px;border-radius:18px;background:linear-gradient(135deg,rgba(255,79,216,.18),rgba(72,215,255,.10));border:1px solid rgba(255,255,255,.12)}\n.custom-card h2{margin:0 0 8px}`; previewAdminBlock(); }
+function previewAdminBlock(){ $('adminPreview').innerHTML = `${$('adminCss').value?`<style>${$('adminCss').value}</style>`:''}${$('adminHtml').value}`; }
+async function saveAdminBlock(e){
+  e.preventDefault(); if(!isAdmin()) return toast('Solo admin.');
+  $('adminMessage').textContent='Salvataggio...';
+  const payload={title:$('adminBlockTitle').value.trim()||'Blocco admin', location:$('adminBlockLocation').value, html:$('adminHtml').value, css:$('adminCss').value, is_active:true, updated_by:state.user.id};
+  const { error } = await db.from('admin_blocks').insert(payload);
+  if(error){ $('adminMessage').textContent=error.message; return; }
+  $('adminDialog')?.close(); await loadAdminBlocks(); toast('Blocco admin salvato');
 }
 
 init();
