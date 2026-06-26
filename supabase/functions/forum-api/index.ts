@@ -46,6 +46,23 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+function errorPayload(error: unknown) {
+  if (error instanceof Error) {
+    return { message: error.message || "EDGE_FUNCTION_ERROR" };
+  }
+  if (error && typeof error === "object") {
+    const row = error as Record<string, unknown>;
+    const message = String(row.message || row.error_description || row.error || "EDGE_FUNCTION_ERROR");
+    return {
+      message,
+      code: row.code ? String(row.code) : undefined,
+      details: row.details ? String(row.details) : undefined,
+      hint: row.hint ? String(row.hint) : undefined,
+    };
+  }
+  return { message: String(error || "EDGE_FUNCTION_ERROR") };
+}
+
 function cleanText(value: unknown, max = 4000) {
   return String(value || "")
     .replace(/\u0000/g, "")
@@ -598,8 +615,14 @@ Deno.serve(async (req) => {
 
     throw new Error("UNKNOWN_ACTION");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "EDGE_FUNCTION_ERROR";
+    const payload = errorPayload(error);
+    const message = payload.message;
     const status = message === "AUTH_REQUIRED" ? 401 : ["FORBIDDEN", "USER_BANNED", "USER_MUTED", "CATEGORY_LOCKED"].includes(message) ? 403 : 400;
-    return json({ error: message }, status);
+    return json({
+      error: message,
+      code: payload.code,
+      details: payload.details,
+      hint: payload.hint,
+    }, status);
   }
 });

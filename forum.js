@@ -1428,8 +1428,8 @@ async function forumApi(action, payload = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data?.error) {
-    const details = data?.details ? ` (${data.details})` : '';
-    throw new Error((data?.error || `Edge Function HTTP ${response.status}`) + details);
+    const meta = [data?.code, data?.details, data?.hint].filter(Boolean).join(' · ');
+    throw new Error((data?.error || `Edge Function HTTP ${response.status}`) + (meta ? ` (${meta})` : ''));
   }
   return data?.data ?? data;
 }
