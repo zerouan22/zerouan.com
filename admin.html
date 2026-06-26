@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="admin.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body data-theme="dark" data-admin-page="true">
+<body data-theme="dark" data-admin-page="true" data-admin-locked="true">
   <div class="site-bg"></div>
 
   <header class="topbar admin-topbar">
@@ -32,6 +32,20 @@
       <div id="userBadge" class="user-badge">Controllo sessione…</div>
     </div>
   </header>
+
+  <section id="adminPreGate" class="admin-pre-gate">
+    <div class="admin-pre-card panel">
+      <p class="eyebrow">Area riservata</p>
+      <h1>Accesso admin richiesto</h1>
+      <p class="muted">Questa pagina non mostra il pannello finche la sessione Supabase non conferma un ruolo <strong>owner</strong>, <strong>admin</strong> o <strong>moderator</strong>.</p>
+      <div class="admin-actions-left">
+        <button id="preGateLoginBtn" class="primary-btn" type="button">Accedi</button>
+        <button id="preGateRefreshBtn" class="secondary-btn" type="button">Ricontrolla sessione</button>
+        <a class="secondary-btn" href="forum.html">Torna al forum</a>
+      </div>
+      <p id="preGateMessage" class="form-message">Controllo sessione in corso...</p>
+    </div>
+  </section>
 
   <main class="admin-shell">
     <aside class="admin-sidebar panel">
