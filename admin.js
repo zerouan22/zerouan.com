@@ -109,4 +109,78 @@ window.hideSound=async(id,is_hidden)=>{await adminAction('update-sound-card',{id
 window.deleteUpload=async id=>{if(!confirm('Eliminare record upload?'))return;await adminAction('delete-upload',{id,target_type:'upload'});await refreshAll()};
 function openEdit(type,row){if(!row)return;state.edit={type,row};$('editTitle').textContent=`Modifica ${type}`;let html='';if(type==='thread')html=`<label class="span-2">Titolo<input name="title" value="${esc(row.title)}"></label><label class="span-2">Testo<textarea name="body" rows="8">${esc(row.body)}</textarea></label><label>Categoria<select name="category_id">${state.categories.map(c=>`<option value="${c.id}" ${c.id===row.category_id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></label><label>Stato<select name="moderation_status"><option ${row.moderation_status==='approved'?'selected':''}>approved</option><option ${row.moderation_status==='pending'?'selected':''}>pending</option><option ${row.moderation_status==='rejected'?'selected':''}>rejected</option></select></label>`;if(type==='post')html=`<label class="span-2">Testo<textarea name="body" rows="8">${esc(row.body)}</textarea></label><label>Stato<select name="moderation_status"><option ${row.moderation_status==='approved'?'selected':''}>approved</option><option ${row.moderation_status==='pending'?'selected':''}>pending</option><option ${row.moderation_status==='rejected'?'selected':''}>rejected</option></select></label>`;if(type==='sound_card')html=`<label>Titolo<input name="title" value="${esc(row.title)}"></label><label>Artista<input name="artist" value="${esc(row.artist)}"></label><label>Genere<input name="main_genre" value="${esc(row.main_genre)}"></label><label>Cover URL<input name="cover_url" value="${esc(row.cover_url||'')}"></label><label class="span-2">Descrizione<textarea name="description" rows="7">${esc(row.description||'')}</textarea></label>`;$('editFields').innerHTML=html;$('editDialog').showModal()}
 async function submitEdit(e){e.preventDefault();const fd=new FormData(e.target);const p=Object.fromEntries(fd.entries());const {type,row}=state.edit;if(type==='thread')await adminAction('update-thread',{id:row.id,...p,target_type:'thread'});if(type==='post')await adminAction('update-post',{id:row.id,...p,target_type:'post'});if(type==='sound_card')await adminAction('update-sound-card',{id:row.id,...p,target_type:'sound_card'});$('editDialog').close();await refreshAll()}
+
+const categoryWriteRoleOrder = ['owner','admin','moderator','artist','trusted_user','user','muted','banned'];
+const categoryWriteRoleLabels = {owner:'Owner',admin:'Admin',moderator:'Mod',artist:'Artisti',trusted_user:'Trusted',user:'User',muted:'Muted',banned:'Banned'};
+const defaultWriteRoles = ['owner','admin','moderator','artist','trusted_user','user'];
+const staffWriteRoles = ['owner','admin','moderator'];
+const artistWriteRoles = ['owner','admin','moderator','artist'];
+const announcementWriteSlugs = new Set(['annunci']);
+const promotionWriteSlugs = new Set(['promozioni-release','promozioni-e-release','promozioni_release','release','promo-release']);
+
+function cleanCategorySlug(slug){return String(slug||'').toLowerCase().trim()}
+function defaultCategoryWritePermissions(){
+  return {default:[...defaultWriteRoles],annunci:[...staffWriteRoles],'promozioni-release':[...artistWriteRoles],'promozioni-e-release':[...artistWriteRoles],promozioni_release:[...artistWriteRoles],release:[...artistWriteRoles],'promo-release':[...artistWriteRoles]};
+}
+function normalizeCategoryWritePermissions(raw){
+  const fallback=defaultCategoryWritePermissions();
+  const input=raw&&typeof raw==='object'?raw:{};
+  const out={...fallback};
+  for(const [slug,roles] of Object.entries(input)){
+    if(Array.isArray(roles)) out[cleanCategorySlug(slug)]=roles.map(cleanCategorySlug).filter(r=>categoryWriteRoleOrder.includes(r)&&!['muted','banned'].includes(r));
+  }
+  out.default=(out.default||defaultWriteRoles).filter(r=>!['muted','banned'].includes(r));
+  out.annunci=[...staffWriteRoles];
+  for(const slug of promotionWriteSlugs) out[slug]=[...artistWriteRoles];
+  return out;
+}
+function rolesForCategoryWrite(cat,permissions=state.settings.category_write_permissions){
+  const slug=cleanCategorySlug(cat?.slug);
+  const normalized=normalizeCategoryWritePermissions(permissions);
+  if(announcementWriteSlugs.has(slug)) return normalized.annunci;
+  if(promotionWriteSlugs.has(slug)) return normalized[slug]||artistWriteRoles;
+  return normalized[slug]||normalized.default||defaultWriteRoles;
+}
+function roleLockedForCategory(slug,role){
+  slug=cleanCategorySlug(slug); role=cleanCategorySlug(role);
+  if(announcementWriteSlugs.has(slug)) return !staffWriteRoles.includes(role);
+  if(promotionWriteSlugs.has(slug)) return !artistWriteRoles.includes(role);
+  return ['muted','banned'].includes(role);
+}
+function renderCategoryWriteMatrix(){
+  const root=$('categoryWriteMatrix'); if(!root) return;
+  const cats=state.categories||[];
+  if(!cats.length){root.innerHTML=emptyRow('Nessuna categoria caricata.');return}
+  let html='<table><thead><tr><th>Categoria</th>'+categoryWriteRoleOrder.map(r=>`<th>${esc(categoryWriteRoleLabels[r]||r)}</th>`).join('')+'</tr></thead><tbody>';
+  for(const cat of cats){
+    const slug=cleanCategorySlug(cat.slug);
+    const roles=rolesForCategoryWrite(cat);
+    html+=`<tr><td><strong>${esc(cat.name||slug)}</strong><br><small>${esc(slug)}</small></td>`+categoryWriteRoleOrder.map(role=>{
+      const locked=roleLockedForCategory(slug,role);
+      const checked=roles.includes(role);
+      return `<td><input type="checkbox" data-cat-write="${esc(slug)}" data-role="${esc(role)}" ${checked?'checked':''} ${locked?'disabled':''}></td>`;
+    }).join('')+'</tr>';
+  }
+  html+='</tbody></table>';
+  root.innerHTML=html;
+}
+async function saveCategoryWritePermissions(){
+  const permissions=normalizeCategoryWritePermissions(state.settings.category_write_permissions);
+  qsa('#categoryWriteMatrix input[data-cat-write]').forEach(input=>{
+    const slug=input.dataset.catWrite;
+    const role=input.dataset.role;
+    if(!permissions[slug]) permissions[slug]=[];
+    permissions[slug]=permissions[slug].filter(r=>r!==role);
+    if(input.checked && !input.disabled) permissions[slug].push(role);
+  });
+  const value=normalizeCategoryWritePermissions(permissions);
+  await adminAction('save-setting',{key:'category_write_permissions',value,target_type:'setting'});
+  state.settings.category_write_permissions=value;
+  renderCategoryWriteMatrix();
+  toast('Permessi scrittura salvati.');
+}
+const renderPermissionsBase=renderPermissions;
+renderPermissions=function(){renderPermissionsBase();renderCategoryWriteMatrix();}
+const bindEventsBase=bindEvents;
+bindEvents=function(){bindEventsBase();$('saveCategoryWritePermissionsBtn')?.addEventListener('click',saveCategoryWritePermissions);}
 bootstrap();

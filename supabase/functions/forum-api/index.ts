@@ -173,6 +173,48 @@ function ensureCanPublish(profile: Record<string, unknown> | null) {
   if (role === "muted" || (mutedUntil && mutedUntil > Date.now())) throw new Error("USER_MUTED");
 }
 
+const defaultWriteRoles = ["owner", "admin", "moderator", "artist", "trusted_user", "user"];
+const staffWriteRoles = ["owner", "admin", "moderator"];
+const artistWriteRoles = ["owner", "admin", "moderator", "artist"];
+const announcementWriteSlugs = new Set(["annunci"]);
+const promotionWriteSlugs = new Set(["promozioni-release", "promozioni-e-release", "promozioni_release", "release", "promo-release"]);
+
+function defaultCategoryWritePermissions() {
+  return {
+    default: [...defaultWriteRoles],
+    annunci: [...staffWriteRoles],
+    "promozioni-release": [...artistWriteRoles],
+    "promozioni-e-release": [...artistWriteRoles],
+    promozioni_release: [...artistWriteRoles],
+    release: [...artistWriteRoles],
+    "promo-release": [...artistWriteRoles],
+  };
+}
+
+function actorWriteRoles(profile: Record<string, unknown> | null) {
+  const role = String(profile?.role || "user").toLowerCase();
+  const roles = new Set([role]);
+  if (profile?.is_artist === true || String(profile?.user_group || "").toLowerCase() === "artist" || role === "artist") roles.add("artist");
+  return [...roles];
+}
+
+async function categoryWriteRoles(slugValue: unknown) {
+  const slug = String(slugValue || "").toLowerCase();
+  const fallback = defaultCategoryWritePermissions();
+  if (announcementWriteSlugs.has(slug)) return fallback.annunci;
+  if (promotionWriteSlugs.has(slug)) return fallback[slug as keyof typeof fallback] || artistWriteRoles;
+  const { data } = await admin.from("site_settings").select("value").eq("key", "category_write_permissions").maybeSingle();
+  const configured = data?.value && typeof data.value === "object" ? data.value as Record<string, unknown> : {};
+  const raw = configured[slug] || configured.default || fallback.default;
+  return Array.isArray(raw) ? raw.map((role) => String(role).toLowerCase()).filter((role) => !["muted", "banned"].includes(role)) : fallback.default;
+}
+
+async function ensureCanWriteInCategory(profile: Record<string, unknown> | null, category: Record<string, unknown>) {
+  const allowed = await categoryWriteRoles(category.slug);
+  const roles = actorWriteRoles(profile);
+  if (!roles.some((role) => allowed.includes(role))) throw new Error("CATEGORY_WRITE_FORBIDDEN");
+}
+
 function compact<T extends Record<string, unknown>>(row: T) {
   return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
@@ -340,7 +382,7 @@ Deno.serve(async (req) => {
       const categoryId = cleanText(payload.category_id, 80);
       const { data: category, error: categoryError } = await admin
         .from("categories")
-        .select("id,is_locked")
+        .select("id,slug,is_locked")
         .eq("id", categoryId)
         .maybeSingle();
       if (categoryError) throw categoryError;
@@ -348,6 +390,7 @@ Deno.serve(async (req) => {
       if (category.is_locked && !["owner", "admin", "moderator"].includes(String(profile?.role || "user"))) {
         throw new Error("CATEGORY_LOCKED");
       }
+      await ensureCanWriteInCategory(profile, category);
       const media = sanitizeMedia(payload.media_items);
       const tags = [...new Set([...(Array.isArray(payload.tags) ? payload.tags.map((x) => cleanText(x, 32)) : []), ...extractTags(`${title} ${text}`)])].slice(0, 12);
       const score = spamScore(`${title}\n${text}`, media);
@@ -617,7 +660,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     const payload = errorPayload(error);
     const message = payload.message;
-    const status = message === "AUTH_REQUIRED" ? 401 : ["FORBIDDEN", "USER_BANNED", "USER_MUTED", "CATEGORY_LOCKED"].includes(message) ? 403 : 400;
+    const status = message === "AUTH_REQUIRED" ? 401 : ["FORBIDDEN", "USER_BANNED", "USER_MUTED", "CATEGORY_LOCKED", "CATEGORY_WRITE_FORBIDDEN"].includes(message) ? 403 : 400;
     return json({
       error: message,
       code: payload.code,

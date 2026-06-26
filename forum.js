@@ -18,6 +18,7 @@ const state = {
   replyMedia: [],
   linkTarget: 'thread'
 };
+state.forumSettings = {};
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -73,6 +74,7 @@ async function init() {
   bindV3Events();
   applySavedTheme();
   await loadSession();
+  await loadForumSettings();
   await Promise.all([loadCategories(), loadStats(), loadLivePanels(), loadThreads(), loadSoundCards(), loadAdminBlocks()]);
   await openInitialThreadFromUrl();
   subscribeRealtime();
@@ -783,6 +785,11 @@ function categoryById(id){ return state.categories.find(c=>c.id === id); }
 function isReservedCategory(cat){ return RESERVED_CATEGORY_SLUGS.has(String(cat?.slug || '').toLowerCase()); }
 function isAnnouncementCategory(cat){ return ADMIN_ONLY_SLUGS.has(String(cat?.slug || '').toLowerCase()); }
 function isPromotionCategory(cat){ return ARTIST_ONLY_SLUGS.has(String(cat?.slug || '').toLowerCase()); }
+async function loadForumSettings() {
+  const { data } = await db.from('site_settings').select('key,value').in('key', ['category_write_permissions']);
+  state.forumSettings = {};
+  (data || []).forEach(row => { state.forumSettings[row.key] = row.value || {}; });
+}
 function canCreateInCategory(cat){
   if(!cat || isReservedCategory(cat)) return false;
   if(isAnnouncementCategory(cat)) return isAdmin();
@@ -2410,19 +2417,54 @@ isArtist = function() {
 canCreateInCategory = function(cat) {
   if (!state.user) return false;
   if (!cat || isReservedCategory(cat)) return false;
-  if (isStaff()) return true;
-  if (isAnnouncementCategory(cat)) return false;
-  if (isPromotionCategory(cat)) return isArtist();
-  return true;
+  if (['muted', 'banned'].includes(String(state.profile?.role || '').toLowerCase())) return false;
+  const allowed = allowedWriteRolesForCategory(cat);
+  return actorWriteRoles().some(role => allowed.includes(role));
 };
 
 function explainCategoryPermission(cat) {
   if (!state.user) return 'Devi accedere per pubblicare.';
   if (!cat) return 'Categoria non trovata: ricarica la pagina.';
   if (isReservedCategory(cat)) return 'Questa sezione e riservata al sistema.';
-  if (isAnnouncementCategory(cat)) return 'Solo staff puo pubblicare annunci.';
-  if (isPromotionCategory(cat)) return 'Questa sezione richiede profilo artista o staff.';
+  if (String(state.profile?.role || '').toLowerCase() === 'banned') return 'Questo profilo e bannato e non puo pubblicare.';
+  if (String(state.profile?.role || '').toLowerCase() === 'muted') return 'Questo profilo e mutato e non puo pubblicare.';
+  if (isAnnouncementCategory(cat)) return 'Solo admin e moderatori possono pubblicare annunci.';
+  if (isPromotionCategory(cat)) return 'Questa sezione richiede profilo artista, moderatore o admin.';
   return 'Non hai i permessi per pubblicare in questa categoria.';
+}
+
+function defaultCategoryWritePermissions() {
+  const staff = ['owner', 'admin', 'moderator'];
+  const artist = [...staff, 'artist'];
+  return {
+    default: [...artist, 'trusted_user', 'user'],
+    annunci: staff,
+    'promozioni-release': artist,
+    'promozioni-e-release': artist,
+    promozioni_release: artist,
+    release: artist,
+    'promo-release': artist
+  };
+}
+
+function allowedWriteRolesForCategory(cat) {
+  const slug = String(cat?.slug || '').toLowerCase();
+  const fallback = defaultCategoryWritePermissions();
+  if (isAnnouncementCategory(cat)) return fallback.annunci;
+  if (isPromotionCategory(cat)) return fallback[slug] || fallback['promozioni-release'];
+  const configured = state.forumSettings?.category_write_permissions || {};
+  const roles = configured[slug] || configured.default || fallback.default;
+  return Array.isArray(roles) ? roles.map(r => String(r).toLowerCase()).filter(r => !['muted', 'banned'].includes(r)) : fallback.default;
+}
+
+function actorWriteRoles() {
+  const role = String(state.profile?.role || 'user').toLowerCase();
+  const roles = new Set([role]);
+  if (isStaff()) ['owner', 'admin', 'moderator'].forEach(staffRole => {
+    if (staffRole === role) roles.add(staffRole);
+  });
+  if (isArtist()) roles.add('artist');
+  return [...roles];
 }
 
 const _openThreadComposerPermissionBase = openThreadComposer;
