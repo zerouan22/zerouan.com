@@ -1365,7 +1365,7 @@ function renderAdminCategories(){
 }
 async function adminCreateCategory(e){
   e.preventDefault(); if(!isAdmin()) return;
-  const payload={name:getInputValue('adminCategoryName'), slug:getInputValue('adminCategorySlug').toLowerCase(), icon:getInputValue('adminCategoryIcon')||'◆', sort_order:Number(getInputValue('adminCategorySort')||50), description:'Categoria creata dal pannello admin.'};
+  const payload={name:getInputValue('adminCategoryName'), slug:getInputValue('adminCategorySlug').toLowerCase(), icon:getInputValue('adminCategoryIcon')||'forum', sort_order:Number(getInputValue('adminCategorySort')||50), description:'Categoria creata dal pannello admin.'};
   const { error } = await db.from('categories').insert(payload); if(error) return toast(error.message);
   $('adminCategoryForm')?.reset(); await loadCategories(); renderAdminCategories(); renderAdminCategoryFilter(); toast('Categoria creata.');
 }
@@ -1415,12 +1415,22 @@ async function forumApi(action, payload = {}) {
   const { data: sessionData } = await db.auth.getSession();
   const token = sessionData.session?.access_token;
   if (!token) throw new Error('Devi accedere per questa azione.');
-  const { data, error } = await db.functions.invoke('forum-api', {
-    body: { action, payload },
-    headers: { Authorization: `Bearer ${token}` }
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/forum-api`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'apikey': SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({ action, payload })
   });
-  if (error) throw new Error(error.message || 'Edge Function non raggiungibile.');
-  if (data?.error) throw new Error(data.error);
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.error) {
+    const details = data?.details ? ` (${data.details})` : '';
+    throw new Error((data?.error || `Edge Function HTTP ${response.status}`) + details);
+  }
   return data?.data ?? data;
 }
 
@@ -1770,7 +1780,7 @@ adminCreateCategory = async function(e) {
       target_type: 'category',
       name: getInputValue('adminCategoryName'),
       slug: getInputValue('adminCategorySlug').toLowerCase(),
-      icon: getInputValue('adminCategoryIcon') || '◆',
+      icon: getInputValue('adminCategoryIcon') || 'forum',
       sort_order: Number(getInputValue('adminCategorySort') || 50),
       description: 'Categoria creata dal pannello admin.'
     });
@@ -1797,7 +1807,7 @@ adminEditCategory = async function(id) {
       target_type: 'category',
       name: name.trim(),
       slug: c.slug,
-      icon: c.icon || '◆',
+      icon: c.icon || 'forum',
       sort_order: c.sort_order ?? 50,
       description: desc.trim()
     });
@@ -2282,6 +2292,101 @@ const _bindV3EventsV4Base = bindV3Events;
 bindV3Events = function() {
   _bindV3EventsV4Base();
   bindProComposerEvents();
+};
+
+/* ===================== INC FORUM V4.1: stable category icons ===================== */
+function categoryIconKey(cat = {}) {
+  const raw = String(cat.icon || cat.slug || cat.name || '').toLowerCase();
+  const slug = String(cat.slug || '').toLowerCase();
+  if (/annunci|bell|news/.test(`${slug} ${raw}`)) return 'announcements';
+  if (/musica|music|brani|release|headphones|sound/.test(`${slug} ${raw}`)) return 'music';
+  if (/scrittura|writer|book|libri/.test(`${slug} ${raw}`)) return 'writing';
+  if (/scienza|science|atom|research/.test(`${slug} ${raw}`)) return 'science';
+  if (/gaming|game|gamer/.test(`${slug} ${raw}`)) return 'gaming';
+  if (/developer|code|web|sviluppo/.test(`${slug} ${raw}`)) return 'code';
+  if (/design|art|cover/.test(`${slug} ${raw}`)) return 'design';
+  if (/ai|automazione|bot/.test(`${slug} ${raw}`)) return 'ai';
+  if (/off/.test(`${slug} ${raw}`)) return 'offtopic';
+  return 'forum';
+}
+
+function categoryIconHtml(cat, className = '') {
+  const key = categoryIconKey(cat);
+  const paths = {
+    forum: '<path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v5A3.5 3.5 0 0 1 16.5 15H11l-4.5 4v-4A3.5 3.5 0 0 1 3 11.5z"/><path d="M8 8h8M8 11h5"/>',
+    announcements: '<path d="M5 11V7.5A2.5 2.5 0 0 1 7.5 5H9l6-2v18l-6-2H7.5A2.5 2.5 0 0 1 5 16.5V13"/><path d="M9 5v14M18 9v6M4 13h3"/>',
+    music: '<path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/><path d="M9 9l10-2"/>',
+    writing: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 5.5v13M8 7h8M8 11h7"/>',
+    science: '<path d="M10 2v6l-5.5 9.5A3 3 0 0 0 7.1 22h9.8a3 3 0 0 0 2.6-4.5L14 8V2"/><path d="M8 2h8M7 16h10"/>',
+    gaming: '<path d="M7 9h10a5 5 0 0 1 4.7 6.7l-.6 1.8a2.2 2.2 0 0 1-3.7.8L15 16H9l-2.4 3.3a2.2 2.2 0 0 1-3.7-.8l-.6-1.8A5 5 0 0 1 7 9z"/><path d="M7 13h4M9 11v4M16.5 13h.01M18.5 15h.01"/>',
+    code: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 4l-4 16"/>',
+    design: '<path d="M12 3l8 8-8 8-8-8z"/><path d="M12 3v16M4 11h16"/>',
+    ai: '<rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4"/><path d="M9 15l2-6 2 6M10 13h2.4M15 9v6"/>',
+    offtopic: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/><path d="M16 3h5v5"/>'
+  };
+  return `<span class="category-glyph ${escapeHtml(className)}" data-icon="${escapeHtml(key)}" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${paths[key] || paths.forum}</svg></span>`;
+}
+
+function categoryOptionLabel(cat) {
+  const labels = {
+    announcements: '[Annunci]',
+    music: '[Musica]',
+    writing: '[Scrittura]',
+    science: '[Scienza]',
+    gaming: '[Gaming]',
+    code: '[Dev]',
+    design: '[Design]',
+    ai: '[AI]',
+    offtopic: '[Off]',
+    forum: '[Forum]'
+  };
+  return `${labels[categoryIconKey(cat)] || '[Forum]'} ${cat.name}`;
+}
+
+renderCategories = function() {
+  const visible = state.categories.filter(c => !isReservedCategory(c));
+  if (!visible.some(c => c.id === state.selectedCategoryId) && visible[0]) {
+    state.selectedCategoryId = visible[0].id;
+    state.selectedCategorySlug = visible[0].slug;
+  }
+  els.categoryList.innerHTML = visible.map(cat => {
+    const isActive = cat.id === state.selectedCategoryId;
+    return `<button class="category-item ${isActive ? 'active' : ''}" type="button" data-id="${escapeHtml(cat.id)}">
+      <span class="left">${categoryIconHtml(cat)}<span>${escapeHtml(cat.name)}</span></span>
+      <span class="category-meta"><span class="pill">${cat.thread_count || 0}</span></span>
+    </button>`;
+  }).join('');
+  els.categoryList.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+    const cat = state.categories.find(c => c.id === btn.dataset.id);
+    if (!cat) return;
+    state.selectedCategoryId = cat.id;
+    state.selectedCategorySlug = cat.slug;
+    showForumMode();
+    renderCategories();
+    updateHero(cat);
+    renderThreads();
+    closeThread();
+  }));
+  updateHero(state.categories.find(c => c.id === state.selectedCategoryId));
+};
+
+renderCategorySelect = function() {
+  const visible = state.categories.filter(c => !isReservedCategory(c));
+  els.newCategory.innerHTML = visible.map(c => {
+    const blocked = state.user && !canCreateInCategory(c);
+    return `<option value="${escapeHtml(c.id)}" ${blocked ? 'disabled' : ''}>${escapeHtml(categoryOptionLabel(c))}</option>`;
+  }).join('');
+};
+
+updateHero = function(cat) {
+  if (!cat) return;
+  els.pageTitle.textContent = cat.name;
+  els.pageSubtitle.textContent = cat.description || 'Discussioni della community.';
+  els.currentSection.textContent = isPromotionCategory(cat) ? 'INC. Release Board' : 'INC. Forum';
+  els.heroThreads.textContent = cat.thread_count || 0;
+  els.heroPosts.textContent = cat.post_count || 0;
+  const icon = document.querySelector('.category-icon');
+  if (icon) icon.innerHTML = categoryIconHtml(cat, 'hero-glyph');
 };
 
 

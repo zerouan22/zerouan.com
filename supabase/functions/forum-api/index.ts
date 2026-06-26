@@ -148,6 +148,14 @@ function requireRole(profile: Record<string, unknown> | null, roles: string[]) {
   if (!roles.includes(role)) throw new Error("FORBIDDEN");
 }
 
+function ensureCanPublish(profile: Record<string, unknown> | null) {
+  const role = String(profile?.role || "user");
+  const mutedUntil = profile?.muted_until ? new Date(String(profile.muted_until)).getTime() : 0;
+  const bannedUntil = profile?.banned_until ? new Date(String(profile.banned_until)).getTime() : 0;
+  if (role === "banned" || (bannedUntil && bannedUntil > Date.now())) throw new Error("USER_BANNED");
+  if (role === "muted" || (mutedUntil && mutedUntil > Date.now())) throw new Error("USER_MUTED");
+}
+
 function compact<T extends Record<string, unknown>>(row: T) {
   return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== undefined)) as Partial<T>;
 }
@@ -307,13 +315,27 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create-thread") {
+      ensureCanPublish(profile);
       const title = cleanText(payload.title, 120);
       const text = cleanText(payload.body, 6000);
+      if (title.length < 4) throw new Error("TITLE_TOO_SHORT");
+      if (text.length < 2) throw new Error("BODY_TOO_SHORT");
+      const categoryId = cleanText(payload.category_id, 80);
+      const { data: category, error: categoryError } = await admin
+        .from("categories")
+        .select("id,is_locked")
+        .eq("id", categoryId)
+        .maybeSingle();
+      if (categoryError) throw categoryError;
+      if (!category) throw new Error("CATEGORY_NOT_FOUND");
+      if (category.is_locked && !["owner", "admin", "moderator"].includes(String(profile?.role || "user"))) {
+        throw new Error("CATEGORY_LOCKED");
+      }
       const media = sanitizeMedia(payload.media_items);
       const tags = [...new Set([...(Array.isArray(payload.tags) ? payload.tags.map((x) => cleanText(x, 32)) : []), ...extractTags(`${title} ${text}`)])].slice(0, 12);
       const score = spamScore(`${title}\n${text}`, media);
       const row = {
-        category_id: cleanText(payload.category_id, 80),
+        category_id: categoryId,
         author_id: user.id,
         title,
         body: text,
@@ -329,7 +351,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === "create-reply") {
+      ensureCanPublish(profile);
       const text = cleanText(payload.body, 4000);
+      if (text.length < 1) throw new Error("BODY_TOO_SHORT");
       const media = sanitizeMedia(payload.media_items);
       const score = spamScore(text, media);
       const threadId = cleanText(payload.thread_id, 80);
@@ -463,7 +487,7 @@ Deno.serve(async (req) => {
           id: targetId || undefined,
           name: cleanText(payload.name, 80),
           slug: cleanText(payload.slug, 80).toLowerCase(),
-          icon: cleanText(payload.icon, 8) || "◆",
+          icon: cleanText(payload.icon, 32) || "forum",
           description: cleanText(payload.description, 260),
           sort_order: Number(payload.sort_order || 50),
         };
@@ -575,7 +599,7 @@ Deno.serve(async (req) => {
     throw new Error("UNKNOWN_ACTION");
   } catch (error) {
     const message = error instanceof Error ? error.message : "EDGE_FUNCTION_ERROR";
-    const status = message === "AUTH_REQUIRED" ? 401 : message === "FORBIDDEN" ? 403 : 400;
+    const status = message === "AUTH_REQUIRED" ? 401 : ["FORBIDDEN", "USER_BANNED", "USER_MUTED", "CATEGORY_LOCKED"].includes(message) ? 403 : 400;
     return json({ error: message }, status);
   }
 });
