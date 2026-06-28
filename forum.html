@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="forum.css" />
+  <link rel="stylesheet" href="community.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body data-theme="dark">
@@ -22,6 +23,9 @@
 
     <nav class="main-nav" aria-label="Navigazione principale">
       <a class="active" href="forum.html" id="navForum">Forum</a>
+      <a href="categories.html">Categorie</a>
+      <a href="notifications.html">Notifiche</a>
+      <a href="profile.html">Profilo</a>
       <a href="#sound-cards" id="navSoundCards">Sound Cards</a>
       <a href="admin.html">Admin</a>
       <!--<a href="guide.html">Guide</a>
@@ -248,10 +252,9 @@
       <p class="muted">Accedi o registrati. Il profilo potrà avere avatar, bio, tema personale e link social.</p>
       <label>Email<input id="authEmail" type="email" placeholder="nome@email.com" required /></label>
       <label>Password<input id="authPassword" type="password" placeholder="••••••••" minlength="6" required /></label>
-      <label>Nome pubblico<input id="displayName" type="text" maxlength="32" placeholder="Es. Zerouan" /></label>
       <div class="modal-actions">
         <button class="secondary-btn" id="loginBtn" type="button">Accedi</button>
-        <button class="primary-btn" id="signupBtn" type="button">Registrati</button>
+        <a class="primary-btn" id="signupBtn" href="register.html">Registrati</a>
       </div>
       <p id="authMessage" class="form-message"></p>
     </form>
@@ -547,6 +550,8 @@
     <a href="contatti.html">Contatti</a>
   </footer>
 
+  <script src="forum-core.js"></script>
   <script src="forum.js"></script>
+  <script src="forum-community.js"></script>
 </body>
 </html>

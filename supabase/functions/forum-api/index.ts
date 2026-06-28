@@ -242,6 +242,36 @@ function sanitizeProfileJson(value: unknown) {
   return output;
 }
 
+function extractMentions(text: string) {
+  return [...new Set((text.match(/@[\p{L}\p{N}_.-]+/gu) || []).map((value) => value.slice(1).toLowerCase()).slice(0, 12))];
+}
+
+async function notifyMentions(actorId: string, text: string, payload: Record<string, unknown>) {
+  const mentions = extractMentions(text);
+  if (!mentions.length) return;
+  const { data: profiles } = await admin.from("profiles").select("id,username").in("username", mentions);
+  const rows = (profiles || [])
+    .filter((row) => row.id !== actorId)
+    .map((row) => ({
+      user_id: row.id,
+      type: "mention",
+      payload: { ...payload, username: row.username, actor_id: actorId },
+    }));
+  if (rows.length) await admin.from("notifications").insert(rows);
+}
+
+async function toggleVote(table: "forum_thread_votes" | "forum_post_votes", targetKey: "thread_id" | "post_id", targetId: string, userId: string, value: number) {
+  const { data: existing } = await admin.from(table).select(`${targetKey},value`).eq(targetKey, targetId).eq("user_id", userId).maybeSingle();
+  if (existing?.value === value) {
+    const { error } = await admin.from(table).delete().eq(targetKey, targetId).eq("user_id", userId);
+    if (error) throw error;
+    return { active: 0 };
+  }
+  const { error } = await admin.from(table).upsert({ [targetKey]: targetId, user_id: userId, value }, { onConflict: `${targetKey},user_id` });
+  if (error) throw error;
+  return { active: value };
+}
+
 async function upsertSetting(key: string, value: unknown) {
   const { data, error } = await admin
     .from("site_settings")
@@ -399,13 +429,19 @@ Deno.serve(async (req) => {
         author_id: user.id,
         title,
         body: text,
+        excerpt: cleanText(payload.excerpt || text, 280),
         media_items: media,
         tags,
+        cover_image_url: safeUrl(payload.cover_image_url) || null,
+        post_type: cleanText(payload.post_type, 24) || "discussion",
+        flair_id: cleanText(payload.flair_id, 80) || null,
+        status: "published",
         moderation_status: score >= 8 ? "pending" : "approved",
         spam_score: score,
       };
       const { data, error } = await admin.from("threads").insert(row).select("*").single();
       if (error) throw error;
+      await notifyMentions(user.id, text, { thread_id: data.id, title });
       if (score >= 8) await logAction(user.id, "spam_hold_thread", "thread", data.id, { score });
       return json({ data, moderation_status: row.moderation_status });
     }
@@ -422,6 +458,7 @@ Deno.serve(async (req) => {
       const { data, error } = await admin.from("posts").insert({
         thread_id: threadId,
         author_id: user.id,
+        parent_post_id: cleanText(payload.parent_post_id, 80) || null,
         body: text,
         media_items: media,
         moderation_status: score >= 8 ? "pending" : "approved",
@@ -430,7 +467,119 @@ Deno.serve(async (req) => {
       if (error) throw error;
       await admin.from("threads").update({ last_activity_at: new Date().toISOString() }).eq("id", threadId);
       if (thread.author_id !== user.id) await createNotification(thread.author_id, "reply", { thread_id: threadId, post_id: data.id });
+      if (payload.parent_post_id) {
+        const { data: parentPost } = await admin.from("posts").select("author_id").eq("id", cleanText(payload.parent_post_id, 80)).maybeSingle();
+        if (parentPost?.author_id && parentPost.author_id !== user.id) await createNotification(parentPost.author_id, "comment_reply", { thread_id: threadId, post_id: data.id, parent_post_id: payload.parent_post_id });
+      }
+      await notifyMentions(user.id, text, { thread_id: threadId, post_id: data.id });
       return json({ data });
+    }
+
+    if (action === "create-comment") {
+      ensureCanPublish(profile);
+      const text = cleanText(payload.body, 4000);
+      if (text.length < 1) throw new Error("BODY_TOO_SHORT");
+      const media = sanitizeMedia(payload.media_items);
+      const score = spamScore(text, media);
+      const threadId = cleanText(payload.thread_id, 80);
+      const parentPostId = cleanText(payload.parent_post_id, 80) || null;
+      const { data: thread } = await admin.from("threads").select("id,author_id,is_locked,is_deleted").eq("id", threadId).maybeSingle();
+      if (!thread || thread.is_locked || thread.is_deleted) throw new Error("THREAD_CLOSED");
+      const { data, error } = await admin.from("posts").insert({
+        thread_id: threadId,
+        parent_post_id: parentPostId,
+        author_id: user.id,
+        body: text,
+        media_items: media,
+        moderation_status: score >= 8 ? "pending" : "approved",
+        spam_score: score,
+      }).select("*").single();
+      if (error) throw error;
+      await admin.from("threads").update({ last_activity_at: new Date().toISOString() }).eq("id", threadId);
+      if (thread.author_id !== user.id) await createNotification(thread.author_id, "reply", { thread_id: threadId, post_id: data.id });
+      if (parentPostId) {
+        const { data: parentPost } = await admin.from("posts").select("author_id").eq("id", parentPostId).maybeSingle();
+        if (parentPost?.author_id && parentPost.author_id !== user.id) await createNotification(parentPost.author_id, "comment_reply", { thread_id: threadId, post_id: data.id, parent_post_id: parentPostId });
+      }
+      await notifyMentions(user.id, text, { thread_id: threadId, post_id: data.id });
+      return json({ data });
+    }
+
+    if (action === "vote-thread") {
+      ensureCanPublish(profile);
+      const threadId = cleanText(payload.thread_id, 80);
+      const value = Number(payload.value);
+      if (![-1, 1].includes(value)) throw new Error("INVALID_VOTE");
+      const result = await toggleVote("forum_thread_votes", "thread_id", threadId, user.id, value);
+      return json({ data: result });
+    }
+
+    if (action === "vote-post") {
+      ensureCanPublish(profile);
+      const postId = cleanText(payload.post_id, 80);
+      const value = Number(payload.value);
+      if (![-1, 1].includes(value)) throw new Error("INVALID_VOTE");
+      const result = await toggleVote("forum_post_votes", "post_id", postId, user.id, value);
+      return json({ data: result });
+    }
+
+    if (action === "toggle-save-thread") {
+      ensureCanPublish(profile);
+      const threadId = cleanText(payload.thread_id, 80);
+      const { data: existing } = await admin.from("thread_bookmarks").select("thread_id").eq("thread_id", threadId).eq("user_id", user.id).maybeSingle();
+      if (existing) {
+        const { error } = await admin.from("thread_bookmarks").delete().eq("thread_id", threadId).eq("user_id", user.id);
+        if (error) throw error;
+        return json({ data: { saved: false } });
+      }
+      const { error } = await admin.from("thread_bookmarks").insert({ thread_id: threadId, user_id: user.id });
+      if (error) throw error;
+      return json({ data: { saved: true } });
+    }
+
+    if (action === "toggle-follow-thread") {
+      ensureCanPublish(profile);
+      const threadId = cleanText(payload.thread_id, 80);
+      const { data: existing } = await admin.from("forum_followed_threads").select("thread_id").eq("thread_id", threadId).eq("user_id", user.id).maybeSingle();
+      if (existing) {
+        const { error } = await admin.from("forum_followed_threads").delete().eq("thread_id", threadId).eq("user_id", user.id);
+        if (error) throw error;
+        return json({ data: { following: false } });
+      }
+      const { error } = await admin.from("forum_followed_threads").insert({ thread_id: threadId, user_id: user.id });
+      if (error) throw error;
+      return json({ data: { following: true } });
+    }
+
+    if (action === "mark-thread-resolved") {
+      const threadId = cleanText(payload.thread_id, 80);
+      const { data: thread, error } = await admin.from("threads").select("id,author_id").eq("id", threadId).maybeSingle();
+      if (error) throw error;
+      if (!thread) throw new Error("THREAD_NOT_FOUND");
+      if (thread.author_id !== user.id) requireRole(profile, ["admin", "moderator"]);
+      const { data, error: updateError } = await admin.from("threads").update({ is_solved: true, status: "resolved", solved_by: user.id }).eq("id", threadId).select("*").single();
+      if (updateError) throw updateError;
+      await logAction(user.id, "mark_thread_resolved", "thread", threadId, {});
+      return json({ data });
+    }
+
+    if (action === "toggle-thread-lock") {
+      requireRole(profile, ["admin", "moderator"]);
+      const threadId = cleanText(payload.thread_id, 80);
+      const lockValue = Boolean(payload.is_locked);
+      const { data, error } = await admin.from("threads").update({ is_locked: lockValue, status: lockValue ? "locked" : "published", locked_by: user.id }).eq("id", threadId).select("*").single();
+      if (error) throw error;
+      await logAction(user.id, lockValue ? "lock_thread" : "unlock_thread", "thread", threadId, {});
+      return json({ data });
+    }
+
+    if (action === "mark-notifications-read") {
+      const notificationIds = Array.isArray(payload.notification_ids) ? payload.notification_ids.map((item) => cleanText(item, 80)).filter(Boolean) : [];
+      let query = admin.from("notifications").update({ is_read: true }).eq("user_id", user.id);
+      if (notificationIds.length) query = query.in("id", notificationIds);
+      const { error } = await query;
+      if (error) throw error;
+      return json({ data: { ok: true } });
     }
 
     if (action === "create-report") {
@@ -513,6 +662,9 @@ Deno.serve(async (req) => {
           is_pinned: payload.is_pinned === undefined ? undefined : Boolean(payload.is_pinned),
           is_featured: payload.is_featured === undefined ? undefined : Boolean(payload.is_featured),
           is_solved: payload.is_solved === undefined ? undefined : Boolean(payload.is_solved),
+          status: payload.status === undefined ? undefined : cleanText(payload.status, 24),
+          flair_id: payload.flair_id === undefined ? undefined : cleanText(payload.flair_id, 80) || null,
+          post_type: payload.post_type === undefined ? undefined : cleanText(payload.post_type, 24),
           moderation_status: payload.moderation_status === undefined ? undefined : cleanText(payload.moderation_status, 24),
           tags: payload.tags === undefined ? undefined : cleanStringArray(payload.tags, 12, 32),
         });
@@ -554,6 +706,27 @@ Deno.serve(async (req) => {
         const { data, error } = await admin.from("categories").upsert(row).select("*").single();
         if (error) throw error;
         result = data;
+      } else if (op === "flair-upsert") {
+        requireRole(profile, ["admin"]);
+        const row = compact({
+          id: targetId || undefined,
+          category_id: cleanText(payload.category_id, 80) || null,
+          slug: cleanText(payload.slug, 80).toLowerCase(),
+          name: cleanText(payload.name, 80),
+          description: cleanText(payload.description, 220),
+          color: cleanText(payload.color, 20) || "#8b2cff",
+          is_active: payload.is_active === undefined ? true : Boolean(payload.is_active),
+          is_staff_only: payload.is_staff_only === undefined ? false : Boolean(payload.is_staff_only),
+          sort_order: Number(payload.sort_order || 100),
+        });
+        const { data, error } = await admin.from("forum_flairs").upsert(row).select("*").single();
+        if (error) throw error;
+        result = data;
+      } else if (op === "flair-delete") {
+        requireRole(profile, ["admin"]);
+        const { error } = await admin.from("forum_flairs").delete().eq("id", targetId);
+        if (error) throw error;
+        result = { id: targetId };
       } else if (op === "category-delete") {
         requireRole(profile, ["admin"]);
         const { error } = await admin.from("categories").delete().eq("id", targetId);

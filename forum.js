@@ -84,7 +84,7 @@ async function init() {
 function bindEvents() {
   els.openAuthBtn.addEventListener('click', () => els.authDialog.showModal());
   els.closeAuthBtn.addEventListener('click', () => els.authDialog.close());
-  els.loginBtn.addEventListener('click', login); els.signupBtn.addEventListener('click', signup); els.logoutBtn.addEventListener('click', logout);
+  els.loginBtn.addEventListener('click', login); els.signupBtn.addEventListener('click', (event) => { event.preventDefault(); window.location.href = 'register.html'; }); els.logoutBtn.addEventListener('click', logout);
   els.themeBtn.addEventListener('click', toggleTheme);
   els.openProfileBtn.addEventListener('click', openProfileEditor); els.closeProfileBtn.addEventListener('click', () => els.profileDialog.close()); els.cancelProfileBtn.addEventListener('click', () => els.profileDialog.close()); els.profileForm.addEventListener('submit', saveProfile); els.avatarFile.addEventListener('change', previewAvatar);
   [els.newThreadBtn, els.quickPostBtn, els.quickPhotoBtn, els.quickVideoBtn, els.quickLinkBtn, els.quickMusicBtn].forEach(btn => btn.addEventListener('click', () => openThreadComposer(btn.id)));

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INC. Forum · Discussione</title>
+  <meta name="description" content="Discussione completa del forum INC. con commenti annidati, voti, salvataggi e follow." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="forum.css" />
+  <link rel="stylesheet" href="community.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-theme="dark">
+  <div class="site-bg"></div>
+  <header class="topbar">
+    <a class="brand" href="forum.html" aria-label="Homepage forum">
+      <span class="brand-mark">Z</span>
+      <span class="brand-text">INC. Forum</span>
+    </a>
+    <nav class="main-nav" id="pageNav" aria-label="Navigazione principale"></nav>
+    <div class="top-actions">
+      <button id="themeBtn" class="icon-btn" type="button" title="Cambia tema">◐</button>
+      <a href="notifications.html" id="notificationsBtn" class="icon-btn" title="Notifiche">🔔</a>
+      <button id="loginBtn" class="icon-btn" type="button" title="Accedi">👤</button>
+      <button id="logoutBtn" class="icon-btn hidden" type="button" title="Esci">↪</button>
+      <a href="profile.html" id="profileBtn" class="profile-chip hidden" title="Profilo"></a>
+      <div id="userBadge" class="user-badge">Ospite</div>
+    </div>
+  </header>
+
+  <main class="community-shell community-page-grid">
+    <section class="community-main-col">
+      <article class="community-thread-card" id="threadCard"></article>
+      <section class="community-toolbar">
+        <label>Ordina commenti
+          <select id="commentSort">
+            <option value="best">Migliori</option>
+            <option value="new">Nuovi</option>
+            <option value="old">Vecchi</option>
+            <option value="votes">Più votati</option>
+          </select>
+        </label>
+        <div class="community-action-row">
+          <button id="markResolvedBtn" class="community-mini-btn hidden" type="button">Marca risolto</button>
+          <button id="lockThreadBtn" class="community-mini-btn hidden" type="button">Chiudi thread</button>
+          <button id="reportThreadBtn" class="community-mini-btn" type="button">Segnala</button>
+        </div>
+      </section>
+      <form id="commentForm" class="community-comment-form">
+        <input id="commentParentId" type="hidden" />
+        <textarea id="commentBody" maxlength="4000" placeholder="Scrivi un commento o una risposta..." required></textarea>
+        <div class="community-action-row">
+          <button id="cancelReplyBtn" class="community-mini-btn hidden" type="button">Annulla risposta</button>
+          <button class="primary-btn" type="submit">Pubblica commento</button>
+        </div>
+        <p id="commentMessage" class="form-message"></p>
+      </form>
+      <section class="community-page-panel">
+        <div class="community-page-header">
+          <div>
+            <p class="eyebrow">Commenti</p>
+            <h2 class="community-section-title">Thread</h2>
+          </div>
+        </div>
+        <div id="commentsList" class="community-comment-list"></div>
+      </section>
+    </section>
+
+    <aside class="community-side-col">
+      <section class="community-side-card">
+        <p class="eyebrow">Categoria</p>
+        <h3 id="categoryTitle">—</h3>
+        <p id="categoryDescription" class="community-muted">—</p>
+      </section>
+      <section class="community-side-card">
+        <p class="eyebrow">Autore</p>
+        <div id="authorCard"></div>
+      </section>
+      <section class="community-side-card">
+        <p class="eyebrow">Discussioni correlate</p>
+        <div id="relatedThreads" class="community-side-list"></div>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="authDialog" class="modal small-modal">
+    <form method="dialog" class="modal-card">
+      <button class="close-btn" type="button" id="closeAuthBtn">×</button>
+      <h2>Accesso forum</h2>
+      <label>Email<input id="authEmail" type="email" required></label>
+      <label>Password<input id="authPassword" type="password" minlength="6" required></label>
+      <div class="modal-actions">
+        <a class="secondary-btn" href="register.html">Registrati</a>
+        <button class="secondary-btn" id="cancelAuthBtn" type="button">Annulla</button>
+        <button class="primary-btn" id="doLoginBtn" type="button">Accedi</button>
+      </div>
+      <p id="authMessage" class="form-message"></p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="forum-core.js"></script>
+  <script src="post.js"></script>
+</body>
+</html>

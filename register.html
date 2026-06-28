@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registrazione · INC. Forum</title>
+  <meta name="description" content="Crea un account per partecipare a INC. Forum." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="forum.css" />
+  <link rel="stylesheet" href="community.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-theme="dark">
+  <div class="site-bg"></div>
+
+  <header class="topbar">
+    <a class="brand" href="forum.html" aria-label="Vai al forum">
+      <span class="brand-mark">Z</span>
+      <span class="brand-text">INC. Forum</span>
+    </a>
+    <nav class="main-nav" id="pageNav" aria-label="Navigazione principale"></nav>
+    <div class="top-actions">
+      <button id="themeBtn" class="icon-btn" type="button" title="Cambia tema">◐</button>
+      <a class="icon-btn" href="forum.html" title="Torna al forum">⌂</a>
+    </div>
+  </header>
+
+  <main class="community-shell register-shell">
+    <section class="community-page-grid">
+      <article class="community-page-panel register-panel">
+        <p class="eyebrow">Nuovo account</p>
+        <h1 class="community-thread-title">Registrazione</h1>
+        <form id="registerForm" class="register-form">
+          <label>Nome pubblico
+            <input id="displayName" type="text" maxlength="32" minlength="2" placeholder="Es. Zerouan" autocomplete="name" required>
+          </label>
+          <label>Username
+            <input id="username" type="text" maxlength="28" placeholder="zerouan" autocomplete="username">
+          </label>
+          <label>Email
+            <input id="email" type="email" placeholder="nome@email.com" autocomplete="email" required>
+          </label>
+          <label>Password
+            <input id="password" type="password" minlength="6" autocomplete="new-password" required>
+          </label>
+          <label>Conferma password
+            <input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required>
+          </label>
+          <label class="register-check">
+            <input id="acceptRules" type="checkbox" required>
+            <span>Accetto le regole del forum e userò un profilo rispettoso della community.</span>
+          </label>
+          <div class="modal-actions">
+            <a class="secondary-btn" href="forum.html">Ho già un account</a>
+            <button id="registerBtn" class="primary-btn" type="submit">Crea account</button>
+          </div>
+          <p id="registerMessage" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+
+      <aside class="community-side-col">
+        <section class="community-side-card">
+          <p class="eyebrow">Dopo la registrazione</p>
+          <ul class="community-clean-list register-benefits">
+            <li>Puoi creare discussioni e commentare.</li>
+            <li>Il profilo viene preparato per avatar, bio, reputazione e livelli.</li>
+            <li>Se Supabase non richiede conferma email, torni al forum già loggato.</li>
+          </ul>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="forum-core.js"></script>
+  <script src="register.js"></script>
+</body>
+</html>

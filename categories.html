@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INC. Forum · Categorie</title>
+  <meta name="description" content="Categorie, sottosezioni e flair del forum INC." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="forum.css" />
+  <link rel="stylesheet" href="community.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-theme="dark">
+  <div class="site-bg"></div>
+  <header class="topbar">
+    <a class="brand" href="forum.html"><span class="brand-mark">Z</span><span class="brand-text">INC. Forum</span></a>
+    <nav class="main-nav" id="pageNav" aria-label="Navigazione principale"></nav>
+    <div class="top-actions">
+      <button id="themeBtn" class="icon-btn" type="button">◐</button>
+      <a href="notifications.html" class="icon-btn">🔔</a>
+      <a href="profile.html" class="icon-btn">👤</a>
+    </div>
+  </header>
+  <main class="community-shell">
+    <section class="community-page-panel">
+      <p class="eyebrow">Mappa del forum</p>
+      <h1 class="community-thread-title">Categorie e flair</h1>
+      <p class="community-muted">Panoramica completa delle aree del forum, con numero di discussioni, commenti e flair disponibili.</p>
+    </section>
+    <section id="categoriesGrid" class="community-main-col"></section>
+  </main>
+  <script src="forum-core.js"></script>
+  <script src="categories.js"></script>
+</body>
+</html>
